@@ -1,0 +1,160 @@
+/* PROJECT INSIGHT V2 - GLOBAL DESIGN SYSTEM */
+
+:root {
+    --pi-primary: #2563eb;
+    --pi-primary-hover: #1d4ed8;
+    --pi-primary-soft: #eff6ff;
+
+    --pi-bg: #f6f8fb;
+    --pi-surface: #ffffff;
+    --pi-surface-soft: #f8fafc;
+    --pi-surface-muted: #f1f5f9;
+
+    --pi-text: #0f172a;
+    --pi-text-secondary: #475569;
+    --pi-text-muted: #94a3b8;
+
+    --pi-border: #e2e8f0;
+    --pi-border-strong: #cbd5e1;
+
+    --pi-success: #16a34a;
+    --pi-success-soft: #ecfdf5;
+    --pi-warning: #d97706;
+    --pi-warning-soft: #fffbeb;
+    --pi-danger: #dc2626;
+    --pi-danger-soft: #fef2f2;
+
+    --pi-sidebar-bg: #0f172a;
+    --pi-sidebar-text: #94a3b8;
+    --pi-sidebar-text-active: #ffffff;
+    --pi-sidebar-active: rgba(37, 99, 235, 0.18);
+
+    --pi-radius-sm: 8px;
+    --pi-radius-md: 10px;
+    --pi-radius-lg: 14px;
+
+    --pi-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.04);
+
+    --pi-sidebar-width: 248px;
+    --pi-sidebar-collapsed-width: 72px;
+    --pi-topbar-height: 64px;
+
+    --pi-transition: 180ms ease;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+    width: 100%;
+    min-width: 100%;
+    min-height: 100%;
+    margin: 0;
+}
+
+html {
+    background: var(--pi-bg);
+}
+
+body {
+    margin: 0;
+    background: var(--pi-bg);
+    color: var(--pi-text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+    margin-top: 0;
+}
+
+.pi-page {
+    width: 100%;
+}
+
+.pi-card {
+    background: var(--pi-surface);
+    border: 1px solid var(--pi-border);
+    border-radius: var(--pi-radius-lg);
+    box-shadow: var(--pi-shadow-sm);
+}
+
+.pi-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--pi-border);
+}
+
+.pi-card-body {
+    padding: 20px;
+}
+
+.pi-card-title {
+    margin: 0;
+    color: var(--pi-text);
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.pi-card-subtitle {
+    margin: 4px 0 0;
+    color: var(--pi-text-muted);
+    font-size: 12px;
+}
+
+.pi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.pi-badge-blue {
+    background: var(--pi-primary-soft);
+    color: var(--pi-primary);
+}
+
+.pi-badge-success {
+    background: var(--pi-success-soft);
+    color: var(--pi-success);
+}
+
+.pi-badge-warning {
+    background: var(--pi-warning-soft);
+    color: var(--pi-warning);
+}
+
+.pi-badge-danger {
+    background: var(--pi-danger-soft);
+    color: var(--pi-danger);
+}
