@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-
 import {
   obtenerRequerimientos
 } from "../services/requerimientosService";
-
 import type {
-  FuenteRequerimiento,
-  RequerimientoTabla
+  Requerimiento
 } from "../services/requerimientosService";
+import type {
+  CodigoFuente
+} from "../config/sourceSchemas";
+
 
 const requerimientos =
-    ref<RequerimientoTabla[]>([]);
+    ref<Requerimiento[]>([]);
 
 const cargando =
     ref(true);
@@ -22,8 +23,41 @@ const error =
 const busqueda =
     ref("");
 
-const filtroFuente =
-    ref<"TODOS" | FuenteRequerimiento>("TODOS");
+
+const FUENTES_FILTRO: {
+  codigo: CodigoFuente;
+  nombre: string;
+}[] = [
+  { codigo: "DT", nombre: "Demanda Táctica" },
+  { codigo: "CQ", nombre: "ClearQuest" },
+  { codigo: "LS", nombre: "Listado" }
+];
+
+
+/*
+ * Se muestran los requerimientos presentes en
+ * al menos una de las fuentes seleccionadas.
+ */
+const fuentesSeleccionadas =
+    ref<CodigoFuente[]>(
+        FUENTES_FILTRO.map(
+            fuente =>
+                fuente.codigo
+        )
+    );
+
+
+function alternarFuente(
+    codigo: CodigoFuente
+) {
+  const seleccion =
+      fuentesSeleccionadas.value;
+
+  fuentesSeleccionadas.value =
+      seleccion.includes(codigo)
+          ? seleccion.filter(item => item !== codigo)
+          : [...seleccion, codigo];
+}
 
 
 async function cargarRequerimientos() {
@@ -48,6 +82,7 @@ async function cargarRequerimientos() {
   }
 }
 
+
 onMounted(cargarRequerimientos);
 
 
@@ -57,36 +92,35 @@ const total =
             requerimientos.value.length
     );
 
+
+function totalFuente(
+    codigo: CodigoFuente
+): number {
+  return requerimientos.value
+      .filter(
+          item =>
+              item.fuentes.includes(codigo)
+      )
+      .length;
+}
+
+
 const totalDT =
-    computed(
-        () =>
-            requerimientos.value
-                .filter(
-                    item =>
-                        item.enDemandaTactica
-                )
-                .length
-    );
+    computed(() => totalFuente("DT"));
 
 const totalCQ =
-    computed(
-        () =>
-            requerimientos.value
-                .filter(
-                    item =>
-                        item.enClearQuest
-                )
-                .length
-    );
+    computed(() => totalFuente("CQ"));
 
-const totalAmbas =
+const totalLS =
+    computed(() => totalFuente("LS"));
+
+const totalTres =
     computed(
         () =>
             requerimientos.value
                 .filter(
                     item =>
-                        item.enDemandaTactica &&
-                        item.enClearQuest
+                        item.fuentes.length === 3
                 )
                 .length
     );
@@ -99,11 +133,16 @@ const requerimientosFiltrados =
               .trim()
               .toLowerCase();
 
+      const seleccion =
+          fuentesSeleccionadas.value;
+
       return requerimientos.value
           .filter(item => {
             if (
-                filtroFuente.value !== "TODOS" &&
-                item.fuente !== filtroFuente.value
+                !item.fuentes.some(
+                    fuente =>
+                        seleccion.includes(fuente)
+                )
             ) {
               return false;
             }
@@ -114,15 +153,14 @@ const requerimientosFiltrados =
 
             const contenido =
                 [
-                  item.idDemanda,
                   item.idMantenimiento,
+                  item.idTramite,
+                  item.idDemanda,
+                  item.caso,
                   item.nombre,
                   item.estado,
                   item.responsable,
-                  item.recurso,
-                  item.gerencia,
-                  item.aplicacion,
-                  item.areaSolicitante
+                  item.aplicacion
                 ]
                     .join(" ")
                     .toLowerCase();
@@ -134,34 +172,16 @@ const requerimientosFiltrados =
     });
 
 
-function etiquetaFuente(
-    fuente: FuenteRequerimiento
-): string {
-  switch (fuente) {
-    case "DT_CQ":
-      return "DT + CQ";
-
-    case "DT":
-      return "DT";
-
-    case "CQ":
-      return "CQ";
-  }
-}
-
-
 function claseFuente(
-    fuente: FuenteRequerimiento
+    fuente: CodigoFuente
 ): string {
   switch (fuente) {
-    case "DT_CQ":
-      return "source-both";
-
     case "DT":
       return "source-dt";
-
     case "CQ":
       return "source-cq";
+    case "LS":
+      return "source-ls";
   }
 }
 </script>
@@ -260,14 +280,29 @@ function claseFuente(
 
       <div class="metric-card">
 
+        <div class="metric-icon ls">
+          <i class="pi pi-list" />
+        </div>
+
+        <div>
+          <span>Listado</span>
+          <strong>{{ totalLS }}</strong>
+          <small>Presentes en Listado</small>
+        </div>
+
+      </div>
+
+
+      <div class="metric-card">
+
         <div class="metric-icon both">
           <i class="pi pi-link" />
         </div>
 
         <div>
-          <span>DT + CQ</span>
-          <strong>{{ totalAmbas }}</strong>
-          <small>Coincidencia por mantenimiento</small>
+          <span>En las 3 fuentes</span>
+          <strong>{{ totalTres }}</strong>
+          <small>DT + Listado + ClearQuest</small>
         </div>
 
       </div>
@@ -292,28 +327,37 @@ function claseFuente(
         </div>
 
 
-        <select
-            v-model="filtroFuente"
+        <div
             class="source-filter"
+            role="group"
+            aria-label="Filtrar por fuente"
         >
 
-          <option value="TODOS">
-            Todas las fuentes
-          </option>
+          <button
+              v-for="fuente in FUENTES_FILTRO"
+              :key="fuente.codigo"
+              type="button"
+              class="source-chip"
+              :class="[
+                claseFuente(fuente.codigo),
+                {
+                  inactive:
+                    !fuentesSeleccionadas.includes(
+                      fuente.codigo
+                    )
+                }
+              ]"
+              :aria-pressed="
+                fuentesSeleccionadas.includes(
+                  fuente.codigo
+                )
+              "
+              @click="alternarFuente(fuente.codigo)"
+          >
+            {{ fuente.nombre }}
+          </button>
 
-          <option value="DT_CQ">
-            DT + CQ
-          </option>
-
-          <option value="DT">
-            Solo Demanda Táctica
-          </option>
-
-          <option value="CQ">
-            Solo ClearQuest
-          </option>
-
-        </select>
+        </div>
 
 
         <div class="results-count">
@@ -388,7 +432,7 @@ function claseFuente(
 
         <span>
           Prueba con otro término de búsqueda
-          o cambia el filtro de fuente.
+          o selecciona otra fuente.
         </span>
 
       </div>
@@ -405,15 +449,23 @@ function claseFuente(
 
           <tr>
             <th>ID Mantenimiento</th>
-            <th>ID Demanda</th>
+
+            <th>ID Trámite</th>
+
+            <th>ID Demanda / Caso</th>
+
             <th class="requirement-column">
               Requerimiento
             </th>
-            <th>Fuente</th>
+
+            <th>Fuentes</th>
+
             <th>Estado</th>
+
             <th>Responsable / Analista</th>
-            <th>Recurso</th>
+
             <th>Aplicación</th>
+
           </tr>
 
           </thead>
@@ -426,7 +478,7 @@ function claseFuente(
                 item
                 in requerimientosFiltrados
               "
-              :key="item.idDocumento"
+              :key="item.id"
           >
 
             <td>
@@ -451,10 +503,29 @@ function claseFuente(
             <td>
 
                 <span
-                    v-if="item.idDemanda"
+                    v-if="item.idTramite"
                     class="id-secondary"
                 >
-                  {{ item.idDemanda }}
+                  {{ item.idTramite }}
+                </span>
+
+              <span
+                  v-else
+                  class="empty-value"
+              >
+                  —
+                </span>
+
+            </td>
+
+
+            <td>
+
+                <span
+                    v-if="item.idDemanda || item.caso"
+                    class="id-secondary"
+                >
+                  {{ item.idDemanda || item.caso }}
                 </span>
 
               <span
@@ -477,9 +548,11 @@ function claseFuente(
               </strong>
 
               <small
-                  v-if="item.gerencia"
+                  v-if="item.compartenMantenimiento > 0"
               >
-                {{ item.gerencia }}
+                Comparte mantenimiento con
+                {{ item.compartenMantenimiento }}
+                requerimiento(s) más
               </small>
 
             </td>
@@ -487,19 +560,15 @@ function claseFuente(
 
             <td>
 
-                <span
-                    class="source-badge"
-                    :class="
-                    claseFuente(
-                      item.fuente
-                    )
-                  "
-                >
-                  {{
-                    etiquetaFuente(
-                        item.fuente
-                    )
-                  }}
+                <span class="source-list">
+                  <span
+                      v-for="fuente in item.fuentes"
+                      :key="fuente"
+                      class="source-badge"
+                      :class="claseFuente(fuente)"
+                  >
+                    {{ fuente }}
+                  </span>
                 </span>
 
             </td>
@@ -529,25 +598,6 @@ function claseFuente(
                 item.responsable ||
                 "—"
               }}
-            </td>
-
-
-            <td>
-
-                <span
-                    v-if="item.recurso"
-                    class="resource-badge"
-                >
-                  {{ item.recurso }}
-                </span>
-
-              <span
-                  v-else
-                  class="empty-value"
-              >
-                  —
-                </span>
-
             </td>
 
 
@@ -640,7 +690,7 @@ function claseFuente(
 .metrics-grid {
   display: grid;
   grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+    repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -677,6 +727,11 @@ function claseFuente(
 .metric-icon.cq {
   background: #f5f3ff;
   color: #7c3aed;
+}
+
+.metric-icon.ls {
+  background: #fff7ed;
+  color: #c2410c;
 }
 
 .metric-icon.both {
@@ -763,15 +818,30 @@ function claseFuente(
 }
 
 .source-filter {
-  height: 36px;
-  min-width: 170px;
-  padding: 0 30px 0 10px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-sm);
-  background: var(--pi-surface);
-  color: var(--pi-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.source-chip {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-size: 10px;
-  outline: none;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.source-chip.inactive {
+  border-color: var(--pi-border);
+  background: var(--pi-surface);
+  color: var(--pi-text-muted);
+}
+
+.source-list {
+  display: inline-flex;
+  gap: 4px;
 }
 
 .results-count {
@@ -896,8 +966,7 @@ tbody tr:hover {
 }
 
 .source-badge,
-.status-badge,
-.resource-badge {
+.status-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 7px;
@@ -917,19 +986,14 @@ tbody tr:hover {
   color: #7c3aed;
 }
 
-.source-both {
-  background: #ecfdf5;
-  color: #16a34a;
+.source-ls {
+  background: #fff7ed;
+  color: #c2410c;
 }
 
 .status-badge {
   background: var(--pi-surface-muted);
   color: var(--pi-text-secondary);
-}
-
-.resource-badge {
-  background: #fff7ed;
-  color: #c2410c;
 }
 
 .state-container {

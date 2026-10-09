@@ -3,8 +3,10 @@ import {
     doc,
     getDoc,
     getDocs,
+    query,
     serverTimestamp,
     setDoc,
+    where,
     writeBatch
 } from "firebase/firestore";
 
@@ -12,22 +14,31 @@ import {
     db
 } from "../firebase/firebase";
 
+import {
+    FUENTES,
+    esFuenteConocida
+} from "../config/sourceSchemas";
+
 import type {
+    FuenteConocida,
     FuenteDatos
 } from "../config/sourceSchemas";
 
+import {
+    COLLECTION_CARGAS,
+    COLLECTION_CONFIGURACION,
+    COLLECTION_REGISTROS,
+    TAMANO_BATCH,
+    construirRegistroFuente,
+    contenidoComparable,
+    datosDocumento,
+    leerRegistroFuente,
+    obtenerIdConfiguracion
+} from "./registrosFuente";
 
-const COLLECTION_REQUERIMIENTOS =
-    "requerimientos_v2";
-
-const COLLECTION_CARGAS =
-    "cargas_v2";
-
-const COLLECTION_CONFIGURACION =
-    "configuracion_v2";
-
-const TAMANO_BATCH =
-    400;
+import type {
+    RegistroFuente
+} from "./registrosFuente";
 
 
 // =========================================================
@@ -56,10 +67,8 @@ export interface RegistroModificado
 
 
 export interface ResultadoComparacionImportacion {
-    fuente: Exclude<
-        FuenteDatos,
-        "DESCONOCIDA"
-    >;
+
+    fuente: FuenteConocida;
 
     totalArchivo: number;
 
@@ -83,254 +92,9 @@ export interface ResultadoComparacionImportacion {
 }
 
 
-interface RegistroPreparado {
-    idDocumento: string;
-    registro:
-        Record<string, unknown>;
-}
-
-
-interface DocumentoActual {
-    idDocumento: string;
-    data:
-        Record<string, unknown>;
-}
-
-
 // =========================================================
 // HELPERS
 // =========================================================
-
-function limpiarTextoId(
-    valor: unknown
-): string {
-
-    if (
-        valor === null ||
-        valor === undefined
-    ) {
-        return "";
-    }
-
-    return String(valor)
-        .trim()
-        .toUpperCase();
-}
-
-
-function limpiarIdDocumento(
-    valor: string
-): string {
-
-    return valor
-        .trim()
-        .replace(/\//g, "-");
-}
-
-
-function limpiarRegistro(
-    registro: Record<string, unknown>
-): Record<string, unknown> {
-
-    const limpio:
-        Record<string, unknown> = {};
-
-    for (
-        const [clave, valor]
-        of Object.entries(registro)
-        ) {
-
-        limpio[clave] =
-            valor === undefined
-                ? null
-                : valor;
-    }
-
-    return limpio;
-}
-
-
-function obtenerIdConfiguracion(
-    fuente: FuenteDatos
-): string {
-
-    switch (fuente) {
-
-        case "DEMANDA_TACTICA":
-            return "baseline_demanda_tactica";
-
-        case "CLEARQUEST":
-            return "baseline_clearquest";
-
-        default:
-            throw new Error(
-                "La fuente no es compatible con actualizaciones."
-            );
-    }
-}
-
-
-function obtenerIdDocumentoTeorico(
-    registro: Record<string, unknown>,
-    fuente: FuenteDatos
-): string {
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        const idMantenimiento =
-            limpiarTextoId(
-                registro.id_mantenimiento
-            );
-
-        if (idMantenimiento) {
-
-            return limpiarIdDocumento(
-                idMantenimiento
-            );
-        }
-
-
-        const idDemanda =
-            limpiarTextoId(
-                registro.id_demanda
-            );
-
-        if (idDemanda) {
-
-            return limpiarIdDocumento(
-                `DT_${idDemanda}`
-            );
-        }
-
-
-        throw new Error(
-            "Se encontró un registro de Demanda Táctica sin identificador."
-        );
-    }
-
-
-    if (
-        fuente === "CLEARQUEST"
-    ) {
-
-        const idMantenimiento =
-            limpiarTextoId(
-                registro.id_mantenimiento
-            );
-
-        if (!idMantenimiento) {
-
-            throw new Error(
-                "Se encontró un registro de ClearQuest sin ID Mantenimiento."
-            );
-        }
-
-
-        return limpiarIdDocumento(
-            idMantenimiento
-        );
-    }
-
-
-    throw new Error(
-        "No se puede procesar una fuente desconocida."
-    );
-}
-
-
-function obtenerBloqueFuente(
-    data: Record<string, unknown>,
-    fuente: FuenteDatos
-): Record<string, unknown> | null {
-
-    const valor =
-        fuente === "DEMANDA_TACTICA"
-            ? data.demanda_tactica
-            : data.clearquest;
-
-
-    if (
-        valor &&
-        typeof valor === "object"
-    ) {
-
-        return valor as Record<string, unknown>;
-    }
-
-
-    return null;
-}
-
-
-function documentoPerteneceFuente(
-    data: Record<string, unknown>,
-    fuente: FuenteDatos
-): boolean {
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        return (
-            data.en_demanda_tactica === true ||
-            obtenerBloqueFuente(
-                data,
-                fuente
-            ) !== null
-        );
-    }
-
-
-    if (
-        fuente === "CLEARQUEST"
-    ) {
-
-        return (
-            data.en_clearquest === true ||
-            obtenerBloqueFuente(
-                data,
-                fuente
-            ) !== null
-        );
-    }
-
-
-    return false;
-}
-
-
-function documentoActivoFuente(
-    data: Record<string, unknown>,
-    fuente: FuenteDatos
-): boolean {
-
-    if (
-        !documentoPerteneceFuente(
-            data,
-            fuente
-        )
-    ) {
-        return false;
-    }
-
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        return (
-            data.activo_demanda_tactica !== false
-        );
-    }
-
-
-    return (
-        data.activo_clearquest !== false
-    );
-}
-
 
 function valorComparable(
     valor: unknown
@@ -507,85 +271,73 @@ function obtenerCambios(
 }
 
 
-function obtenerNombreRegistro(
-    registro: Record<string, unknown>,
-    fuente: FuenteDatos
-): string {
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        return String(
-            registro.nombre_requerimiento ??
-            ""
-        ).trim();
-    }
-
-
-    return String(
-        registro.descripcion_cq ??
-        ""
-    ).trim();
-}
-
-
-function obtenerIdPrincipal(
-    registro: Record<string, unknown>,
-    fuente: FuenteDatos
-): string {
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        return (
-            limpiarTextoId(
-                registro.id_mantenimiento
-            ) ||
-            limpiarTextoId(
-                registro.id_demanda
-            )
-        );
-    }
-
-
-    return limpiarTextoId(
-        registro.id_mantenimiento
-    );
-}
-
-
-function resumenDocumentoActual(
-    documento:
-    DocumentoActual,
-    fuente: FuenteDatos
+function resumenRegistro(
+    registro: RegistroFuente
 ): RegistroComparacion {
-
-    const bloque =
-        obtenerBloqueFuente(
-            documento.data,
-            fuente
-        ) ?? {};
-
 
     return {
         idDocumento:
-        documento.idDocumento,
+        registro.idDocumento,
 
         idPrincipal:
-            obtenerIdPrincipal(
-                bloque,
-                fuente
-            ) ||
-            documento.idDocumento,
+            [
+                registro.clave,
+                registro.idMantenimiento ??
+                registro.idTramite
+            ]
+                .filter(Boolean)
+                .join(" · "),
 
         nombre:
-            obtenerNombreRegistro(
-                bloque,
-                fuente
-            )
+        registro.nombre
     };
+}
+
+
+async function obtenerRegistrosGuardados(
+    fuente: FuenteConocida
+): Promise<Map<string, RegistroFuente>> {
+
+    const snapshot =
+        await getDocs(
+            query(
+                collection(
+                    db,
+                    COLLECTION_REGISTROS
+                ),
+                where(
+                    "fuente",
+                    "==",
+                    fuente
+                )
+            )
+        );
+
+
+    const registros =
+        new Map<string, RegistroFuente>();
+
+
+    snapshot.forEach(
+        documento => {
+
+            const registro =
+                leerRegistroFuente(
+                    documento.id,
+                    documento.data()
+                );
+
+            if (registro) {
+                registros.set(
+                    documento.id,
+                    registro
+                );
+            }
+        }
+    );
+
+
+    return registros;
 }
 
 
@@ -597,26 +349,20 @@ export async function existeBaselineFuente(
     fuente: FuenteDatos
 ): Promise<boolean> {
 
-    if (
-        fuente === "DESCONOCIDA"
-    ) {
+    if (!esFuenteConocida(fuente)) {
         return false;
     }
 
 
-    const referencia =
-        doc(
-            db,
-            COLLECTION_CONFIGURACION,
-            obtenerIdConfiguracion(
-                fuente
-            )
-        );
-
-
     const snapshot =
         await getDoc(
-            referencia
+            doc(
+                db,
+                COLLECTION_CONFIGURACION,
+                obtenerIdConfiguracion(
+                    fuente
+                )
+            )
         );
 
 
@@ -629,191 +375,177 @@ export async function existeBaselineFuente(
 
 
 // =========================================================
-// RESOLUCIÓN DE IDENTIDAD
+// COMPARACIÓN
 // =========================================================
 
-function crearIndices(
-    documentos:
-    DocumentoActual[]
-) {
-
-    const porDocumento =
-        new Map<
-            string,
-            DocumentoActual
-        >();
-
-    const porMantenimiento =
-        new Map<
-            string,
-            DocumentoActual
-        >();
-
-    const porDemanda =
-        new Map<
-            string,
-            DocumentoActual
-        >();
+interface ComparacionInterna {
+    resultado: ResultadoComparacionImportacion;
+    aEscribir: RegistroFuente[];
+}
 
 
-    for (
-        const documento
-        of documentos
-        ) {
+function compararRegistros(
+    registros: Record<string, unknown>[],
+    fuente: FuenteConocida,
+    guardados: Map<string, RegistroFuente>
+): ComparacionInterna {
 
-        porDocumento.set(
-            documento.idDocumento,
-            documento
+    const nuevos:
+        RegistroComparacion[] = [];
+
+    const modificados:
+        RegistroModificado[] = [];
+
+    const aEscribir:
+        RegistroFuente[] = [];
+
+    let sinCambios =
+        0;
+
+    const presentes =
+        new Set<string>();
+
+
+    for (const registroOriginal of registros) {
+
+        const registro =
+            construirRegistroFuente(
+                registroOriginal,
+                fuente
+            );
+
+
+        presentes.add(
+            registro.idDocumento
         );
 
 
-        const data =
-            documento.data;
-
-
-        const idMantenimiento =
-            limpiarTextoId(
-                data.id_mantenimiento
-            ) ||
-            limpiarTextoId(
-                (data.demanda_tactica as Record<string, unknown> | undefined)?.id_mantenimiento
-            ) ||
-            limpiarTextoId(
-                (data.clearquest as Record<string, unknown> | undefined)?.id_mantenimiento
+        const anterior =
+            guardados.get(
+                registro.idDocumento
             );
 
 
-        const idDemanda =
-            limpiarTextoId(
-                data.id_demanda
-            ) ||
-            limpiarTextoId(
-                (data.demanda_tactica as Record<string, unknown> | undefined)?.id_demanda
-            );
-
-
+        /*
+         * Un registro que estaba inactivo y vuelve a
+         * aparecer en el Excel se trata como nuevo.
+         */
         if (
-            idMantenimiento &&
-            !porMantenimiento.has(
-                idMantenimiento
-            )
+            !anterior ||
+            !anterior.activo
         ) {
 
-            porMantenimiento.set(
-                idMantenimiento,
-                documento
+            nuevos.push(
+                resumenRegistro(
+                    registro
+                )
             );
+
+            aEscribir.push(
+                registro
+            );
+
+            continue;
         }
 
 
+        const contenidoAnterior =
+            contenidoComparable(
+                anterior.datos,
+                anterior.extra
+            );
+
+        const contenidoNuevo =
+            contenidoComparable(
+                registro.datos,
+                registro.extra
+            );
+
+
         if (
-            idDemanda &&
-            !porDemanda.has(
-                idDemanda
+            registrosIguales(
+                contenidoAnterior,
+                contenidoNuevo
             )
         ) {
+            sinCambios += 1;
+            continue;
+        }
 
-            porDemanda.set(
-                idDemanda,
-                documento
+
+        modificados.push({
+            ...resumenRegistro(
+                registro
+            ),
+
+            cambios:
+                obtenerCambios(
+                    contenidoAnterior,
+                    contenidoNuevo
+                )
+        });
+
+
+        aEscribir.push(
+            registro
+        );
+    }
+
+
+    const inactivos:
+        RegistroComparacion[] = [];
+
+
+    for (const registro of guardados.values()) {
+
+        if (
+            registro.activo &&
+            !presentes.has(
+                registro.idDocumento
+            )
+        ) {
+            inactivos.push(
+                resumenRegistro(
+                    registro
+                )
             );
         }
     }
 
 
     return {
-        porDocumento,
-        porMantenimiento,
-        porDemanda
+        aEscribir,
+
+        resultado: {
+            fuente,
+
+            totalArchivo:
+            registros.length,
+
+            nuevos,
+
+            modificados,
+
+            sinCambios,
+
+            inactivos,
+
+            resumen: {
+                nuevos:
+                nuevos.length,
+
+                modificados:
+                modificados.length,
+
+                sinCambios,
+
+                inactivos:
+                inactivos.length
+            }
+        }
     };
 }
 
-
-function resolverDocumentoExistente(
-    registro:
-    Record<string, unknown>,
-    fuente:
-    FuenteDatos,
-    indices:
-    ReturnType<
-        typeof crearIndices
-    >
-): DocumentoActual | null {
-
-    const idTeorico =
-        obtenerIdDocumentoTeorico(
-            registro,
-            fuente
-        );
-
-
-    const porDocumento =
-        indices.porDocumento.get(
-            idTeorico
-        );
-
-
-    if (porDocumento) {
-        return porDocumento;
-    }
-
-
-    const idMantenimiento =
-        limpiarTextoId(
-            registro.id_mantenimiento
-        );
-
-
-    if (idMantenimiento) {
-
-        const porMantenimiento =
-            indices
-                .porMantenimiento
-                .get(
-                    idMantenimiento
-                );
-
-
-        if (porMantenimiento) {
-            return porMantenimiento;
-        }
-    }
-
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        const idDemanda =
-            limpiarTextoId(
-                registro.id_demanda
-            );
-
-
-        if (idDemanda) {
-
-            const porDemanda =
-                indices
-                    .porDemanda
-                    .get(
-                        idDemanda
-                    );
-
-
-            if (porDemanda) {
-                return porDemanda;
-            }
-        }
-    }
-
-
-    return null;
-}
-
-
-// =========================================================
-// COMPARACIÓN
-// =========================================================
 
 export async function compararConUltimaCarga(
     registros:
@@ -822,9 +554,7 @@ export async function compararConUltimaCarga(
     FuenteDatos
 ): Promise<ResultadoComparacionImportacion> {
 
-    if (
-        fuente === "DESCONOCIDA"
-    ) {
+    if (!esFuenteConocida(fuente)) {
 
         throw new Error(
             "No se puede comparar una fuente desconocida."
@@ -832,13 +562,11 @@ export async function compararConUltimaCarga(
     }
 
 
-    const existeBaseline =
-        await existeBaselineFuente(
+    if (
+        !await existeBaselineFuente(
             fuente
-        );
-
-
-    if (!existeBaseline) {
+        )
+    ) {
 
         throw new Error(
             "La fuente todavía no tiene una base inicial."
@@ -846,453 +574,58 @@ export async function compararConUltimaCarga(
     }
 
 
-    const snapshot =
-        await getDocs(
-            collection(
-                db,
-                COLLECTION_REQUERIMIENTOS
-            )
-        );
-
-
-    const documentos:
-        DocumentoActual[] =
-        snapshot.docs.map(
-            documento => ({
-                idDocumento:
-                documento.id,
-
-                data:
-                    documento.data() as Record<string, unknown>
-            })
-        );
-
-
-    const indices =
-        crearIndices(
-            documentos
-        );
-
-
-    const nuevos:
-        RegistroComparacion[] = [];
-
-    const modificados:
-        RegistroModificado[] = [];
-
-    let sinCambios =
-        0;
-
-
-    const documentosPresentes =
-        new Set<string>();
-
-
-    for (
-        const registroOriginal
-        of registros
-        ) {
-
-        const registro =
-            limpiarRegistro(
-                registroOriginal
-            );
-
-
-        const documentoExistente =
-            resolverDocumentoExistente(
-                registro,
-                fuente,
-                indices
-            );
-
-
-        if (!documentoExistente) {
-
-            const idDocumento =
-                obtenerIdDocumentoTeorico(
-                    registro,
-                    fuente
-                );
-
-
-            documentosPresentes.add(
-                idDocumento
-            );
-
-
-            nuevos.push({
-                idDocumento,
-
-                idPrincipal:
-                    obtenerIdPrincipal(
-                        registro,
-                        fuente
-                    ),
-
-                nombre:
-                    obtenerNombreRegistro(
-                        registro,
-                        fuente
-                    )
-            });
-
-
-            continue;
-        }
-
-
-        documentosPresentes.add(
-            documentoExistente
-                .idDocumento
-        );
-
-
-        const anterior =
-            obtenerBloqueFuente(
-                documentoExistente.data,
-                fuente
-            );
-
-
-        if (!anterior) {
-
-            nuevos.push({
-                idDocumento:
-                documentoExistente
-                    .idDocumento,
-
-                idPrincipal:
-                    obtenerIdPrincipal(
-                        registro,
-                        fuente
-                    ),
-
-                nombre:
-                    obtenerNombreRegistro(
-                        registro,
-                        fuente
-                    )
-            });
-
-
-            continue;
-        }
-
-
-        if (
-            registrosIguales(
-                anterior,
-                registro
-            )
-        ) {
-
-            sinCambios += 1;
-
-            continue;
-        }
-
-
-        modificados.push({
-            idDocumento:
-            documentoExistente
-                .idDocumento,
-
-            idPrincipal:
-                obtenerIdPrincipal(
-                    registro,
-                    fuente
-                ),
-
-            nombre:
-                obtenerNombreRegistro(
-                    registro,
-                    fuente
-                ),
-
-            cambios:
-                obtenerCambios(
-                    anterior,
-                    registro
-                )
-        });
-    }
-
-
-    const inactivos:
-        RegistroComparacion[] = [];
-
-
-    for (
-        const documento
-        of documentos
-        ) {
-
-        if (
-            !documentoActivoFuente(
-                documento.data,
-                fuente
-            )
-        ) {
-            continue;
-        }
-
-
-        if (
-            documentosPresentes.has(
-                documento.idDocumento
-            )
-        ) {
-            continue;
-        }
-
-
-        inactivos.push(
-            resumenDocumentoActual(
-                documento,
-                fuente
-            )
-        );
-    }
-
-
-    const fuenteTipada =
-        fuente as Exclude<
-            FuenteDatos,
-            "DESCONOCIDA"
-        >;
-
-
-    return {
-        fuente:
-        fuenteTipada,
-
-        totalArchivo:
-        registros.length,
-
-        nuevos,
-
-        modificados,
-
-        sinCambios,
-
-        inactivos,
-
-        resumen: {
-            nuevos:
-            nuevos.length,
-
-            modificados:
-            modificados.length,
-
-            sinCambios,
-
-            inactivos:
-            inactivos.length
-        }
-    };
-}
-
-
-// =========================================================
-// CONSTRUCCIÓN DE DATOS DE FIRESTORE
-// =========================================================
-
-function datosActualizacionFuente(
-    registro:
-    Record<string, unknown>,
-    fuente:
-    Exclude<
-        FuenteDatos,
-        "DESCONOCIDA"
-    >,
-    idCarga:
-    string
-): Record<string, unknown> {
-
-    const registroLimpio =
-        limpiarRegistro(
-            registro
-        );
-
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        const datos:
-            Record<string, unknown> = {
-
-            en_demanda_tactica:
-                true,
-
-            activo_demanda_tactica:
-                true,
-
-            demanda_tactica:
-            registroLimpio,
-
-            ultima_carga_demanda_tactica:
-            idCarga,
-
-            fecha_actualizacion_demanda_tactica:
-                serverTimestamp(),
-
-            ultima_fuente_importada:
-                "DEMANDA_TACTICA",
-
-            fecha_ultima_importacion:
-                serverTimestamp()
-        };
-
-
-        const idDemanda =
-            String(
-                registro.id_demanda ??
-                ""
-            ).trim();
-
-
-        const idMantenimiento =
-            String(
-                registro.id_mantenimiento ??
-                ""
-            ).trim();
-
-
-        const nombre =
-            String(
-                registro.nombre_requerimiento ??
-                ""
-            ).trim();
-
-
-        if (idDemanda) {
-            datos.id_demanda =
-                idDemanda;
-        }
-
-
-        if (idMantenimiento) {
-            datos.id_mantenimiento =
-                idMantenimiento;
-        }
-
-
-        if (nombre) {
-            datos.nombre_requerimiento =
-                nombre;
-        }
-
-
-        return datos;
-    }
-
-
-    const datos:
-        Record<string, unknown> = {
-
-        en_clearquest:
-            true,
-
-        activo_clearquest:
-            true,
-
-        clearquest:
-        registroLimpio,
-
-        ultima_carga_clearquest:
-        idCarga,
-
-        fecha_actualizacion_clearquest:
-            serverTimestamp(),
-
-        ultima_fuente_importada:
-            "CLEARQUEST",
-
-        fecha_ultima_importacion:
-            serverTimestamp()
-    };
-
-
-    const idMantenimiento =
-        String(
-            registro.id_mantenimiento ??
-            ""
-        ).trim();
-
-
-    if (idMantenimiento) {
-        datos.id_mantenimiento =
-            idMantenimiento;
-    }
-
-
-    return datos;
-}
-
-
-function datosInactivacionFuente(
-    fuente:
-    Exclude<
-        FuenteDatos,
-        "DESCONOCIDA"
-    >,
-    idCarga:
-    string
-): Record<string, unknown> {
-
-    if (
-        fuente === "DEMANDA_TACTICA"
-    ) {
-
-        return {
-            activo_demanda_tactica:
-                false,
-
-            ultima_carga_demanda_tactica:
-            idCarga,
-
-            fecha_inactivacion_demanda_tactica:
-                serverTimestamp(),
-
-            fecha_actualizacion_demanda_tactica:
-                serverTimestamp(),
-
-            ultima_fuente_importada:
-                "DEMANDA_TACTICA",
-
-            fecha_ultima_importacion:
-                serverTimestamp()
-        };
-    }
-
-
-    return {
-        activo_clearquest:
-            false,
-
-        ultima_carga_clearquest:
-        idCarga,
-
-        fecha_inactivacion_clearquest:
-            serverTimestamp(),
-
-        fecha_actualizacion_clearquest:
-            serverTimestamp(),
-
-        ultima_fuente_importada:
-            "CLEARQUEST",
-
-        fecha_ultima_importacion:
-            serverTimestamp()
-    };
+    return compararRegistros(
+        registros,
+        fuente,
+        await obtenerRegistrosGuardados(
+            fuente
+        )
+    ).resultado;
 }
 
 
 // =========================================================
 // APLICAR ACTUALIZACIÓN
 // =========================================================
+
+async function escribirEnLotes<T>(
+    elementos: T[],
+    escribir: (
+        batch: ReturnType<typeof writeBatch>,
+        elemento: T
+    ) => void
+) {
+
+    for (
+        let inicio = 0;
+        inicio < elementos.length;
+        inicio += TAMANO_BATCH
+    ) {
+
+        const batch =
+            writeBatch(
+                db
+            );
+
+
+        for (
+            const elemento
+            of elementos.slice(
+                inicio,
+                inicio + TAMANO_BATCH
+            )
+            ) {
+            escribir(
+                batch,
+                elemento
+            );
+        }
+
+
+        await batch.commit();
+    }
+}
+
 
 export async function aplicarActualizacionFuente(
     registros:
@@ -1307,9 +640,7 @@ export async function aplicarActualizacionFuente(
     FuenteDatos
 ) {
 
-    if (
-        fuente === "DESCONOCIDA"
-    ) {
+    if (!esFuenteConocida(fuente)) {
 
         throw new Error(
             "No se puede actualizar una fuente desconocida."
@@ -1317,223 +648,91 @@ export async function aplicarActualizacionFuente(
     }
 
 
-    const comparacion =
-        await compararConUltimaCarga(
-            registros,
+    if (
+        !await existeBaselineFuente(
             fuente
+        )
+    ) {
+
+        throw new Error(
+            "La fuente todavía no tiene una base inicial."
         );
-
-
-    const prefijo =
-        fuente === "DEMANDA_TACTICA"
-            ? "dt"
-            : "cq";
-
-
-    const idCarga =
-        `carga_${prefijo}_${Date.now()}`;
-
-
-    const snapshot =
-        await getDocs(
-            collection(
-                db,
-                COLLECTION_REQUERIMIENTOS
-            )
-        );
-
-
-    const documentos:
-        DocumentoActual[] =
-        snapshot.docs.map(
-            documento => ({
-                idDocumento:
-                documento.id,
-
-                data:
-                    documento.data() as Record<string, unknown>
-            })
-        );
-
-
-    const indices =
-        crearIndices(
-            documentos
-        );
-
-
-    const idNuevos =
-        new Set(
-            comparacion.nuevos.map(
-                item =>
-                    item.idDocumento
-            )
-        );
-
-
-    const idModificados =
-        new Set(
-            comparacion.modificados.map(
-                item =>
-                    item.idDocumento
-            )
-        );
-
-
-    const registrosAEscribir:
-        RegistroPreparado[] = [];
-
-
-    for (
-        const registroOriginal
-        of registros
-        ) {
-
-        const registro =
-            limpiarRegistro(
-                registroOriginal
-            );
-
-
-        const existente =
-            resolverDocumentoExistente(
-                registro,
-                fuente,
-                indices
-            );
-
-
-        const idDocumento =
-            existente
-                ?.idDocumento ??
-            obtenerIdDocumentoTeorico(
-                registro,
-                fuente
-            );
-
-
-        if (
-            !idNuevos.has(
-                idDocumento
-            ) &&
-            !idModificados.has(
-                idDocumento
-            )
-        ) {
-
-            continue;
-        }
-
-
-        registrosAEscribir.push({
-            idDocumento,
-            registro
-        });
     }
 
 
-    for (
-        let inicio = 0;
-        inicio < registrosAEscribir.length;
-        inicio += TAMANO_BATCH
-    ) {
-
-        const lote =
-            registrosAEscribir.slice(
-                inicio,
-                inicio + TAMANO_BATCH
-            );
-
-
-        const batch =
-            writeBatch(
-                db
-            );
+    const {
+        resultado: comparacion,
+        aEscribir
+    } =
+        compararRegistros(
+            registros,
+            fuente,
+            await obtenerRegistrosGuardados(
+                fuente
+            )
+        );
 
 
-        for (
-            const item
-            of lote
-            ) {
+    const idCarga =
+        `carga_${FUENTES[fuente].codigo.toLowerCase()}_${Date.now()}`;
 
-            const referencia =
+
+    /*
+     * Se reemplaza el documento completo (sin merge)
+     * para que no queden columnas que ya no vienen
+     * en el Excel.
+     */
+    await escribirEnLotes(
+        aEscribir,
+        (batch, registro) =>
+            batch.set(
                 doc(
                     db,
-                    COLLECTION_REQUERIMIENTOS,
-                    item.idDocumento
-                );
-
-
-            batch.set(
-                referencia,
+                    COLLECTION_REGISTROS,
+                    registro.idDocumento
+                ),
                 {
-                    id_registro:
-                    item.idDocumento,
+                    ...datosDocumento(
+                        registro
+                    ),
 
-                    ...datosActualizacionFuente(
-                        item.registro,
-                        fuente,
-                        idCarga
-                    )
+                    ultima_carga:
+                    idCarga,
+
+                    fecha_actualizacion:
+                        serverTimestamp()
+                }
+            )
+    );
+
+
+    await escribirEnLotes(
+        comparacion.inactivos,
+        (batch, item) =>
+            batch.set(
+                doc(
+                    db,
+                    COLLECTION_REGISTROS,
+                    item.idDocumento
+                ),
+                {
+                    activo:
+                        false,
+
+                    ultima_carga:
+                    idCarga,
+
+                    fecha_inactivacion:
+                        serverTimestamp(),
+
+                    fecha_actualizacion:
+                        serverTimestamp()
                 },
                 {
                     merge: true
                 }
-            );
-        }
-
-
-        await batch.commit();
-    }
-
-
-    for (
-        let inicio = 0;
-        inicio < comparacion.inactivos.length;
-        inicio += TAMANO_BATCH
-    ) {
-
-        const lote =
-            comparacion.inactivos.slice(
-                inicio,
-                inicio + TAMANO_BATCH
-            );
-
-
-        const batch =
-            writeBatch(
-                db
-            );
-
-
-        for (
-            const item
-            of lote
-            ) {
-
-            const referencia =
-                doc(
-                    db,
-                    COLLECTION_REQUERIMIENTOS,
-                    item.idDocumento
-                );
-
-
-            batch.set(
-                referencia,
-                datosInactivacionFuente(
-                    fuente,
-                    idCarga
-                ),
-                {
-                    merge: true
-                }
-            );
-        }
-
-
-        await batch.commit();
-    }
+            )
+    );
 
 
     await setDoc(
