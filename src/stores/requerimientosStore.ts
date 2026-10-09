@@ -41,12 +41,23 @@ export const useRequerimientosStore = defineStore("requerimientos", () => {
         }
     }
 
+    /*
+     * Al cambiar de usuario no se reutilizan los datos
+     * leídos con la sesión anterior.
+     */
+    function limpiar() {
+        requerimientos.value = [];
+        cargado.value = false;
+        error.value = "";
+    }
+
     return {
         requerimientos,
         cargando,
         cargado,
         error,
         porId,
-        cargar
+        cargar,
+        limpiar
     };
 });
