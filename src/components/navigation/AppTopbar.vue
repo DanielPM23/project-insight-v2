@@ -1,12 +1,41 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "../../stores/authStore";
+import { ROLES } from "../../services/usuariosService";
 
 defineEmits<{
   alternarSidebar: [];
 }>();
 
 const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
+
+const menuAbierto = ref(false);
+
+const nombreUsuario = computed(
+    () => auth.perfil?.nombre || auth.usuario?.email || "Usuario"
+);
+
+const iniciales = computed(() =>
+    nombreUsuario.value
+        .split(/[\s@.]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(parte => parte[0]?.toUpperCase())
+        .join("")
+);
+
+const nombreRol = computed(
+    () => ROLES.find(rol => rol.valor === auth.perfil?.rol)?.nombre ?? ""
+);
+
+async function salir() {
+  menuAbierto.value = false;
+  await auth.cerrarSesion();
+  router.replace({ name: "login" });
+}
 
 const titulo = computed(
     () => String(route.meta.titulo ?? "Project Insight")
@@ -65,21 +94,39 @@ const subtitulo = computed(
         <i class="pi pi-bell" />
       </button>
 
-      <button
-          class="user-button"
-          type="button"
-      >
-        <div class="avatar">
-          DP
-        </div>
+      <div class="user-menu">
+        <button
+            class="user-button"
+            type="button"
+            :aria-expanded="menuAbierto"
+            @click="menuAbierto = !menuAbierto"
+        >
+          <div class="avatar">
+            {{ iniciales }}
+          </div>
+          <div class="user-copy">
+            <strong>{{ nombreUsuario }}</strong>
+            <span>{{ nombreRol }}</span>
+          </div>
+          <i class="pi pi-chevron-down user-chevron" />
+        </button>
 
-        <div class="user-copy">
-          <strong>Usuario</strong>
-          <span>Project Insight</span>
+        <div
+            v-if="menuAbierto"
+            class="user-dropdown"
+        >
+          <div class="user-dropdown-email">
+            {{ auth.usuario?.email }}
+          </div>
+          <button
+              type="button"
+              @click="salir"
+          >
+            <i class="pi pi-sign-out" />
+            Cerrar sesión
+          </button>
         </div>
-
-        <i class="pi pi-chevron-down user-chevron" />
-      </button>
+      </div>
 
     </div>
 
@@ -251,6 +298,50 @@ const subtitulo = computed(
 
   font-size: 9px;
   font-weight: 600;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--pi-border);
+  border-radius: var(--pi-radius-md);
+  background: var(--pi-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+}
+
+.user-dropdown-email {
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--pi-surface-muted);
+  color: var(--pi-text-muted);
+  font-size: 10px;
+}
+
+.user-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  border: none;
+  border-radius: var(--pi-radius-sm);
+  background: none;
+  color: var(--pi-text-secondary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-dropdown button:hover {
+  background: var(--pi-surface-soft);
+  color: var(--pi-danger);
 }
 
 .user-button {

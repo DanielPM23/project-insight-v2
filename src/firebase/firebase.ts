@@ -1,10 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+export const firebaseConfig = {
+    apiKey:
+    import.meta.env.VITE_FIREBASE_API_KEY,
 
     authDomain:
     import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -31,6 +32,22 @@ const app = initializeApp(
 );
 
 
+console.log(
+    "🔥 Project ID:",
+    app.options.projectId
+);
+
+console.log(
+    "🔥 Auth Domain:",
+    app.options.authDomain
+);
+
+console.log(
+    "🔥 App ID:",
+    app.options.appId
+);
+
+
 // Firebase Authentication
 export const auth = getAuth(
     app
@@ -41,6 +58,28 @@ export const auth = getAuth(
 export const db = getFirestore(
     app
 );
+
+
+/*
+ * Para probar sin tocar los datos reales:
+ * VITE_FIREBASE_EMULADORES=true y `firebase emulators:start`.
+ */
+export const usaEmuladores =
+    import.meta.env.VITE_FIREBASE_EMULADORES === "true";
+
+if (usaEmuladores) {
+    connectAuthEmulator(
+        auth,
+        "http://127.0.0.1:9099",
+        { disableWarnings: true }
+    );
+
+    connectFirestoreEmulator(
+        db,
+        "127.0.0.1",
+        8080
+    );
+}
 
 
 export default app;

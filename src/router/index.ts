@@ -7,16 +7,31 @@ import MainLayout from "../layouts/MainLayout.vue";
 
 import DashboardView from "../views/DashboardView.vue";
 import RequerimientosView from "../views/RequerimientosView.vue";
+import RequerimientoDetalleView from "../views/RequerimientoDetalleView.vue";
 import ImportacionesView from "../views/ImportacionesView.vue";
 import PlanificacionView from "../views/PlanificacionView.vue";
 import ReportesView from "../views/ReportesView.vue";
 import AuditoriaView from "../views/AuditoriaView.vue";
 import ConfiguracionView from "../views/ConfiguracionView.vue";
+import UsuariosView from "../views/UsuariosView.vue";
+import LoginView from "../views/LoginView.vue";
+
+import { useAuthStore } from "../stores/authStore";
 
 const router = createRouter({
     history:
         createWebHistory(),
     routes: [
+
+        {
+            path: "/login",
+            name: "login",
+            component:
+            LoginView,
+            meta: {
+                publica: true
+            }
+        },
 
         {
             path: "/",
@@ -62,6 +77,26 @@ const router = createRouter({
 
                 {
                     path:
+                        "requerimientos/:id",
+                    name:
+                        "requerimiento-detalle",
+
+                    component:
+                    RequerimientoDetalleView,
+
+                    props:
+                        true,
+
+                    meta: {
+                        titulo:
+                            "Detalle del requerimiento",
+                        subtitulo:
+                            "Todos los campos de Demanda Táctica, Listado y ClearQuest"
+                    }
+                },
+
+                {
+                    path:
                         "importaciones",
                     name:
                         "importaciones",
@@ -72,7 +107,10 @@ const router = createRouter({
                             "Importaciones",
 
                         subtitulo:
-                            "Carga y análisis de fuentes de datos"
+                            "Carga y análisis de fuentes de datos",
+
+                        soloAdmin:
+                            true
                     }
                 },
 
@@ -137,7 +175,29 @@ const router = createRouter({
                             "Configuración",
 
                         subtitulo:
-                            "Administración de Project Insight"
+                            "Administración de Project Insight",
+
+                        soloAdmin:
+                            true
+                    }
+                },
+
+                {
+                    path:
+                        "usuarios",
+                    name:
+                        "usuarios",
+                    component:
+                    UsuariosView,
+                    meta: {
+                        titulo:
+                            "Usuarios",
+
+                        subtitulo:
+                            "Accesos y roles",
+
+                        soloAdmin:
+                            true
                     }
                 }
             ]
@@ -145,6 +205,35 @@ const router = createRouter({
 
     ]
 
+});
+
+
+/*
+ * Sin sesión o sin perfil activo se va al login; las
+ * rutas de carga y administración son solo para admin.
+ * Las reglas de Firestore repiten estos permisos.
+ */
+router.beforeEach(async to => {
+    const auth = useAuthStore();
+
+    await auth.iniciar();
+
+    if (to.meta.publica) {
+        return true;
+    }
+
+    if (!auth.tieneAcceso) {
+        return {
+            name: "login",
+            query: to.fullPath !== "/" ? { redirect: to.fullPath } : {}
+        };
+    }
+
+    if (to.meta.soloAdmin && !auth.esAdmin) {
+        return { name: "dashboard" };
+    }
+
+    return true;
 });
 
 

@@ -1,22 +1,38 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { RouterLink } from "vue-router";
+import { useAuthStore } from "../../stores/authStore";
 
 defineProps<{
   colapsado: boolean;
 }>();
 
-const menuPrincipal = [
+const auth = useAuthStore();
+
+const opcionesPrincipal = [
   { nombre: "Dashboard", ruta: "/dashboard", icono: "pi pi-chart-bar" },
   { nombre: "Requerimientos", ruta: "/requerimientos", icono: "pi pi-list" },
-  { nombre: "Importaciones", ruta: "/importaciones", icono: "pi pi-upload" },
+  { nombre: "Importaciones", ruta: "/importaciones", icono: "pi pi-upload", soloAdmin: true },
   { nombre: "Planificación", ruta: "/planificacion", icono: "pi pi-calendar" },
   { nombre: "Reportes", ruta: "/reportes", icono: "pi pi-chart-line" },
   { nombre: "Auditoría", ruta: "/auditoria", icono: "pi pi-shield" }
 ];
 
-const menuGestion = [
-  { nombre: "Configuración", ruta: "/configuracion", icono: "pi pi-cog" }
+const opcionesGestion = [
+  { nombre: "Usuarios", ruta: "/usuarios", icono: "pi pi-users", soloAdmin: true },
+  { nombre: "Configuración", ruta: "/configuracion", icono: "pi pi-cog", soloAdmin: true }
 ];
+
+/*
+ * Los usuarios de consulta no ven las opciones de carga
+ * ni de administración.
+ */
+function visibles<T extends { soloAdmin?: boolean }>(opciones: T[]): T[] {
+  return opciones.filter(item => !item.soloAdmin || auth.esAdmin);
+}
+
+const menuPrincipal = computed(() => visibles(opcionesPrincipal));
+const menuGestion = computed(() => visibles(opcionesGestion));
 </script>
 
 <template>
@@ -65,6 +81,7 @@ const menuGestion = [
         </span>
       </RouterLink>
 
+      <template v-if="menuGestion.length">
       <div class="nav-divider" />
 
       <div
@@ -92,6 +109,7 @@ const menuGestion = [
           {{ item.nombre }}
         </span>
       </RouterLink>
+      </template>
 
     </nav>
 

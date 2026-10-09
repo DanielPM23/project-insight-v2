@@ -36,3 +36,11 @@ export interface AnalisisExcel {
 
     registros: Record<string, unknown>[];
 }
+
+/*
+ * Cada registro analizado guarda aquí las columnas del
+ * Excel que no están en el esquema de la fuente
+ * (cabecera original → valor).
+ */
+export const CAMPO_EXTRA =
+    "_extra";

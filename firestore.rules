@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// Permisos de Project Insight.
+//
+// - admin: carga los Excels y administra usuarios.
+// - consulta: solo lee requerimientos.
+//
+// El rol está en usuarios/{uid}. Una cuenta sin perfil o
+// desactivada no ve ningún dato.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function activo() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && perfil().activo == true;
+    }
+
+    function esAdmin() {
+      return activo() && perfil().rol == "admin";
+    }
+
+    function perfilValido(datos) {
+      return datos.rol in ["admin", "consulta"]
+        && datos.activo is bool
+        && datos.email is string
+        && datos.nombre is string;
+    }
+
+
+    // ---------------------------------------------------
+    // Usuarios
+    // ---------------------------------------------------
+
+    match /usuarios/{uid} {
+      allow read: if autenticado()
+        && (request.auth.uid == uid || esAdmin());
+
+      // El admin crea perfiles. La única excepción es el
+      // primer administrador, que se crea junto con
+      // sistema/iam mientras ese documento no exista.
+      allow create: if perfilValido(request.resource.data) && (
+        esAdmin() || (
+          autenticado()
+          && request.auth.uid == uid
+          && request.resource.data.rol == "admin"
+          && request.resource.data.activo == true
+          && !exists(/databases/$(database)/documents/sistema/iam)
+          && getAfter(/databases/$(database)/documents/sistema/iam).data.adminInicial == uid
+        )
+      );
+
+      // Un admin no puede quitarse a sí mismo el rol ni
+      // desactivarse, para que siempre quede alguno.
+      allow update: if esAdmin()
+        && perfilValido(request.resource.data)
+        && (
+          request.auth.uid != uid
+          || (request.resource.data.rol == "admin"
+              && request.resource.data.activo == true)
+        );
+
+      allow delete: if false;
+    }
+
+    match /sistema/iam {
+      allow read: if autenticado();
+
+      allow create: if autenticado()
+        && request.resource.data.adminInicial == request.auth.uid
+        && getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == "admin";
+
+      allow update, delete: if false;
+    }
+
+
+    // ---------------------------------------------------
+    // Datos de los Excels
+    // ---------------------------------------------------
+
+    match /registros_fuente_v3/{id} {
+      allow read: if activo();
+      allow write: if esAdmin();
+    }
+
+    match /cargas_v3/{id} {
+      allow read: if activo();
+      allow write: if esAdmin();
+    }
+
+    match /configuracion_v3/{id} {
+      allow read: if activo();
+      allow write: if esAdmin();
+    }
+
+    // Modelo anterior (solo como respaldo).
+    match /requerimientos_v2/{id} {
+      allow read: if activo();
+      allow write: if esAdmin();
+    }
+
+    match /cargas_v2/{id} {
+      allow read: if activo();
+      allow write: if esAdmin();
+    }
+
+    match /configuracion_v2/{id} {
+      allow read: if activo();
+      allow write: if esAdmin();
+    }
+  }
+}

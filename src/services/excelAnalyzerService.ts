@@ -1,8 +1,13 @@
 import * as XLSX from "xlsx";
 
 import {
-    FUENTES
+    FUENTES,
+    esFuenteConocida
 } from "../config/sourceSchemas";
+
+import {
+    parsearFecha
+} from "../utils/fechas";
 
 import {
     detectarFuente
@@ -12,6 +17,10 @@ import type {
     FuenteDatos,
     ConfiguracionFuente
 } from "../config/sourceSchemas";
+
+import {
+    CAMPO_EXTRA
+} from "../models/ExcelAnalysis";
 
 import type {
     AnalisisExcel,
@@ -37,6 +46,8 @@ interface CandidatoCabecera {
     puntuacion: number;
 
     camposReconocidos: number;
+
+    hojaPreferida: boolean;
 }
 
 
@@ -111,6 +122,36 @@ function crearMapaAliasesFuente(
 
 
     return mapa;
+}
+
+
+// =========================================================
+// HOJA PREFERIDA DE UNA FUENTE
+// =========================================================
+
+function esHojaPreferida(
+    nombreHoja: string,
+    fuente: FuenteDatos
+): boolean {
+
+    if (!esFuenteConocida(fuente)) {
+        return false;
+    }
+
+
+    const hoja =
+        normalizarTexto(
+            nombreHoja
+        );
+
+
+    return FUENTES[fuente]
+        .hojasPreferidas
+        .some(
+            preferida =>
+                normalizarTexto(preferida) ===
+                hoja
+        );
 }
 
 
@@ -222,17 +263,38 @@ function buscarMejorCabecera(
                 deteccion.puntuacion,
 
                 camposReconocidos:
-                deteccion.camposReconocidos
+                deteccion.camposReconocidos,
+
+                hojaPreferida:
+                    esHojaPreferida(
+                        nombreHoja,
+                        deteccion.fuente
+                    )
 
             };
 
 
             /*
-             * Primero elegimos por puntuación.
+             * Primero gana la hoja preferida de la fuente
+             * (un libro puede repetir las mismas cabeceras
+             * en varias hojas), luego la puntuación.
              *
              * Si empatan, gana la fila que
              * reconoció mayor cantidad de campos.
              */
+            if (
+                mejorCandidato &&
+                mejorCandidato.hojaPreferida !==
+                candidato.hojaPreferida
+            ) {
+                if (candidato.hojaPreferida) {
+                    mejorCandidato =
+                        candidato;
+                }
+
+                continue;
+            }
+
             const esMejor =
                 !mejorCandidato ||
 
@@ -498,7 +560,9 @@ function obtenerColumnasNoReconocidas(
 function construirRegistros(
     filas: unknown[][],
     filaCabeceraIndice: number,
-    camposDetectados: CampoDetectado[]
+    cabeceras: string[],
+    camposDetectados: CampoDetectado[],
+    configuracionFuente: ConfiguracionFuente
 ): Record<string, unknown>[] {
 
     const registros:
@@ -506,10 +570,29 @@ function construirRegistros(
         [];
 
 
+    const indicesReconocidos =
+        new Set(
+            camposDetectados.map(
+                campo =>
+                    campo.indiceColumna
+            )
+        );
+
+
+    const camposIdentificacion =
+        new Set([
+            ...configuracionFuente.camposClave,
+            configuracionFuente.campoMantenimiento,
+            configuracionFuente.campoTramite ?? "",
+            configuracionFuente.campoNombre
+        ]);
+
+
     const filasDatos =
         filas.slice(
             filaCabeceraIndice + 1
         );
+
 
     for (
         const fila
@@ -520,6 +603,7 @@ function construirRegistros(
             continue;
         }
 
+
         const registro:
             Record<string, unknown> = {};
 
@@ -527,26 +611,46 @@ function construirRegistros(
         let tieneDatosReconocidos =
             false;
 
+
         for (
             const campo
             of camposDetectados
             ) {
 
-            const valor =
+            let valor =
                 fila[
                     campo.indiceColumna
                     ];
+
 
             const tieneValor =
                 valor !== null &&
                 valor !== undefined &&
                 String(valor).trim() !== "";
 
-            if (tieneValor) {
 
+            if (
+                tieneValor &&
+                camposIdentificacion.has(
+                    campo.campoCanonico
+                )
+            ) {
                 tieneDatosReconocidos =
                     true;
             }
+
+
+            if (
+                configuracionFuente.campos[
+                    campo.campoCanonico
+                    ]?.tipo === "fecha"
+            ) {
+                valor =
+                    parsearFecha(
+                        valor
+                    );
+            }
+
 
             registro[
                 campo.campoCanonico
@@ -554,8 +658,11 @@ function construirRegistros(
                 valor ?? null;
         }
 
+
         /*
-         * Ignoramos filas completamente vacías.
+         * Ignoramos filas sin clave, sin IDs y sin nombre:
+         * son filas vacías o de plantilla (fórmulas que
+         * rellenan "Por definir", "Sin esfuerzo"...).
          *
          * Si falta algún ID obligatorio,
          * NO descartamos la fila aquí.
@@ -564,18 +671,70 @@ function construirRegistros(
          * encargado de detectarlo.
          */
         if (
-            tieneDatosReconocidos
+            !tieneDatosReconocidos
         ) {
-
-            registros.push(
-                registro
-            );
+            continue;
         }
+
+
+        /*
+         * Las columnas que no están en el esquema
+         * también se guardan, para poder mostrar
+         * todos los campos del Excel en el detalle.
+         */
+        const extra:
+            Record<string, unknown> = {};
+
+
+        cabeceras.forEach(
+            (
+                cabecera,
+                indice
+            ) => {
+
+                if (
+                    !cabecera ||
+                    indicesReconocidos.has(
+                        indice
+                    ) ||
+                    cabecera in extra
+                ) {
+                    return;
+                }
+
+
+                const valor =
+                    fila[indice];
+
+
+                if (
+                    valor === null ||
+                    valor === undefined ||
+                    String(valor).trim() === ""
+                ) {
+                    return;
+                }
+
+
+                extra[cabecera] =
+                    valor;
+            }
+        );
+
+
+        registro[CAMPO_EXTRA] =
+            extra;
+
+
+        registros.push(
+            registro
+        );
     }
 
 
     return registros;
 }
+
 
 // =========================================================
 // ANALIZAR ARCHIVO
@@ -706,7 +865,9 @@ export async function analizarExcel(
         construirRegistros(
             candidato.filas,
             candidato.filaIndice,
-            camposDetectados
+            cabeceras,
+            camposDetectados,
+            configuracionFuente
         );
     if (
         registros.length === 0

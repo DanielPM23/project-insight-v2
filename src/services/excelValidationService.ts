@@ -1,6 +1,14 @@
+import {
+    FUENTES
+} from "../config/sourceSchemas";
+
 import type {
     FuenteDatos
 } from "../config/sourceSchemas";
+
+import {
+    obtenerClaveRegistro
+} from "../utils/identificadores";
 
 export interface ResultadoValidacion {
     valido: boolean;
@@ -11,68 +19,6 @@ export interface ResultadoValidacion {
     campoIdentificador: string;
 
     errores: string[];
-}
-
-// =========================================================
-// LIMPIAR IDENTIFICADORES
-// =========================================================
-
-function limpiarId(
-    valor: unknown
-): string {
-
-    if (
-        valor === null ||
-        valor === undefined
-    ) {
-        return "";
-    }
-
-    return String(valor)
-        .trim()
-        .toUpperCase();
-}
-
-// =========================================================
-// OBTENER IDENTIFICADOR SEGÚN FUENTE
-// =========================================================
-
-function obtenerCampoIdentificador(
-    fuente: FuenteDatos
-): string {
-
-    switch (fuente) {
-
-        case "DEMANDA_TACTICA":
-            return "id_demanda";
-
-        case "CLEARQUEST":
-            return "id_mantenimiento";
-
-        default:
-            return "";
-    }
-}
-
-// =========================================================
-// NOMBRE LEGIBLE DEL IDENTIFICADOR
-// =========================================================
-
-function obtenerNombreIdentificador(
-    fuente: FuenteDatos
-): string {
-
-    switch (fuente) {
-
-        case "DEMANDA_TACTICA":
-            return "ID Demanda";
-
-        case "CLEARQUEST":
-            return "ID Mantenimiento";
-
-        default:
-            return "Identificador";
-    }
 }
 
 // =========================================================
@@ -124,15 +70,14 @@ export function validarRegistrosExcel(
     // IDENTIFICADOR PRINCIPAL
     // =======================================================
 
+    const configuracion =
+        FUENTES[fuente];
+
     const campoIdentificador =
-        obtenerCampoIdentificador(
-            fuente
-        );
+        configuracion.camposClave.join(" / ");
 
     const nombreIdentificador =
-        obtenerNombreIdentificador(
-            fuente
-        );
+        configuracion.nombreClave;
 
     const ids =
         new Map<
@@ -154,10 +99,9 @@ export function validarRegistrosExcel(
         ) {
 
         const identificador =
-            limpiarId(
-                registro[
-                    campoIdentificador
-                    ]
+            obtenerClaveRegistro(
+                registro,
+                configuracion.camposClave
             );
 
         if (!identificador) {

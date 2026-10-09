@@ -30,6 +30,11 @@ import type {
   AnalisisExcel
 } from "../models/ExcelAnalysis";
 
+import {
+  FUENTES,
+  esFuenteConocida
+} from "../config/sourceSchemas";
+
 
 // =========================================================
 // ESTADO
@@ -123,27 +128,29 @@ const puedeCrearBaseline =
     });
 
 
-const etiquetaFuente =
+const configuracionFuente =
     computed(() => {
 
-      if (!analisis.value) {
-        return "";
+      if (
+          !analisis.value ||
+          !esFuenteConocida(
+              analisis.value.fuente
+          )
+      ) {
+        return null;
       }
 
-      switch (
+      return FUENTES[
           analisis.value.fuente
-          ) {
-
-        case "DEMANDA_TACTICA":
-          return "Demanda Táctica";
-
-        case "CLEARQUEST":
-          return "ClearQuest";
-
-        default:
-          return "Fuente desconocida";
-      }
+          ];
     });
+
+
+const etiquetaFuente =
+    computed(() =>
+        configuracionFuente.value?.nombre ??
+        (analisis.value ? "Fuente desconocida" : "")
+    );
 
 
 const claseFuente =
@@ -153,19 +160,9 @@ const claseFuente =
         return "";
       }
 
-      switch (
-          analisis.value.fuente
-          ) {
-
-        case "DEMANDA_TACTICA":
-          return "source-dt";
-
-        case "CLEARQUEST":
-          return "source-cq";
-
-        default:
-          return "source-unknown";
-      }
+      return configuracionFuente.value
+          ? `source-${configuracionFuente.value.codigo.toLowerCase()}`
+          : "source-unknown";
     });
 
 
@@ -353,6 +350,13 @@ function mostrarValor(
   ) {
     return "—";
   }
+
+  if (
+      valor instanceof Date
+  ) {
+    return valor.toLocaleString("es-PE");
+  }
+
 
   if (
       typeof valor === "object"
@@ -573,7 +577,7 @@ async function guardarComoBaseline() {
   const confirmar =
       window.confirm(
           `Se guardarán ${analisis.value.totalRegistros} ` +
-          `requerimientos de ${etiquetaFuente.value} ` +
+          `registros de ${etiquetaFuente.value} ` +
           `como base inicial de Project Insight V2.\n\n` +
           `Esta será la referencia para comparar los próximos archivos ` +
           `de esta misma fuente.\n\n` +
@@ -609,7 +613,7 @@ async function guardarComoBaseline() {
 
     mensajeBaseline.value =
         `Base inicial de ${etiquetaFuente.value} creada correctamente. ` +
-        `${resultado.guardados} requerimientos guardados.`;
+        `${resultado.guardados} registros guardados.`;
 
   } catch (e) {
 
@@ -1105,7 +1109,9 @@ async function confirmarActualizacion() {
                       :class="
                       analisis.fuente === 'CLEARQUEST'
                         ? 'pi pi-database'
-                        : 'pi pi-table'
+                        : analisis.fuente === 'LISTADO'
+                          ? 'pi pi-list'
+                          : 'pi pi-table'
                     "
                   />
 
@@ -1534,10 +1540,10 @@ async function confirmarActualizacion() {
           <div class="panel-heading">
 
             <div>
-              <h3>Columnas todavía no utilizadas</h3>
+              <h3>Columnas adicionales</h3>
 
               <p>
-                Permanecen disponibles para futuras funcionalidades.
+                Se guardan tal cual y se muestran en el detalle del requerimiento.
               </p>
             </div>
 
@@ -1560,8 +1566,8 @@ async function confirmarActualizacion() {
               <i class="pi pi-info-circle" />
 
               <span>
-                No representan un error. Simplemente todavía
-                no tienen un uso definido en Project Insight.
+                No representan un error. No tienen un campo propio
+                en Project Insight, pero su valor se conserva.
               </span>
 
             </div>
@@ -1606,13 +1612,10 @@ async function confirmarActualizacion() {
       </div>
 
 
-      <!-- VISTA PREVIA DT -->
+      <!-- VISTA PREVIA -->
 
       <div
-          v-if="
-          analisis.fuente ===
-          'DEMANDA_TACTICA'
-        "
+          v-if="configuracionFuente"
           class="panel preview-panel"
       >
 
@@ -1624,9 +1627,10 @@ async function confirmarActualizacion() {
               <h3>Vista previa</h3>
 
               <span
-                  class="source-mini source-dt"
+                  class="source-mini"
+                  :class="claseFuente"
               >
-                Demanda Táctica
+                {{ configuracionFuente.nombre }}
               </span>
             </div>
 
@@ -1649,117 +1653,12 @@ async function confirmarActualizacion() {
 
             <thead>
             <tr>
-              <th>ID Demanda</th>
-              <th>ID Mantenimiento</th>
-              <th>Requerimiento</th>
-              <th>Estado TI</th>
-              <th>Recurso</th>
-              <th>Responsable</th>
-            </tr>
-            </thead>
-
-            <tbody>
-
-            <tr
-                v-for="
-                  (registro, index)
-                  in analisis.registros.slice(0, 10)
-                "
-                :key="index"
-            >
-
-              <td>
-                  <span class="id-value">
-                    {{ registro.id_demanda ?? "—" }}
-                  </span>
-              </td>
-
-              <td>
-                  <span class="id-value">
-                    {{ registro.id_mantenimiento ?? "—" }}
-                  </span>
-              </td>
-
-              <td class="requirement-cell">
-                {{ registro.nombre_requerimiento ?? "—" }}
-              </td>
-
-              <td>
-                  <span class="neutral-tag">
-                    {{ registro.estado_ti ?? "—" }}
-                  </span>
-              </td>
-
-              <td>
-                {{ registro.recurso ?? "—" }}
-              </td>
-
-              <td>
-                {{ registro.responsable_dt ?? "—" }}
-              </td>
-
-            </tr>
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-      </div>
-
-
-      <!-- VISTA PREVIA CQ -->
-
-      <div
-          v-else-if="
-          analisis.fuente ===
-          'CLEARQUEST'
-        "
-          class="panel preview-panel"
-      >
-
-        <div class="panel-heading">
-
-          <div>
-
-            <div class="heading-with-badge">
-
-              <h3>Vista previa</h3>
-
-              <span
-                  class="source-mini source-cq"
+              <th
+                  v-for="columna in configuracionFuente.columnasVista"
+                  :key="columna.campo"
               >
-                ClearQuest
-              </span>
-
-            </div>
-
-            <p>
-              Primeros 10 registros detectados en el archivo.
-            </p>
-
-          </div>
-
-          <span class="count-badge">
-            10 máx.
-          </span>
-
-        </div>
-
-
-        <div class="table-wrapper">
-
-          <table class="preview-table">
-
-            <thead>
-            <tr>
-              <th>ID Mantenimiento</th>
-              <th>Aplicación</th>
-              <th>Descripción</th>
-              <th>Área solicitante</th>
-              <th>Analista</th>
-              <th>Estado</th>
+                {{ columna.titulo }}
+              </th>
             </tr>
             </thead>
 
@@ -1773,32 +1672,15 @@ async function confirmarActualizacion() {
                 :key="index"
             >
 
-              <td>
-                  <span class="id-value">
-                    {{ registro.id_mantenimiento ?? "—" }}
-                  </span>
-              </td>
-
-              <td>
-                {{ registro.aplicacion_cq ?? "—" }}
-              </td>
-
-              <td class="requirement-cell">
-                {{ registro.descripcion_cq ?? "—" }}
-              </td>
-
-              <td>
-                {{ registro.area_solicitante_cq ?? "—" }}
-              </td>
-
-              <td>
-                {{ registro.analista_cq ?? "—" }}
-              </td>
-
-              <td>
-                  <span class="neutral-tag">
-                    {{ registro.estado_cq ?? "—" }}
-                  </span>
+              <td
+                  v-for="columna in configuracionFuente.columnasVista"
+                  :key="columna.campo"
+                  :class="{
+                    'requirement-cell':
+                      columna.campo === configuracionFuente.campoNombre
+                  }"
+              >
+                {{ mostrarValor(registro[columna.campo]) }}
               </td>
 
             </tr>
@@ -3044,6 +2926,15 @@ async function confirmarActualizacion() {
 
   color:
       #6d28d9;
+}
+
+
+.source-ls {
+  background:
+      #fff7ed;
+
+  color:
+      #c2410c;
 }
 
 
