@@ -1,18 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import {
+  computed,
+  onMounted,
+  ref
+} from "vue";
+
 import {
   obtenerRequerimientos
 } from "../services/requerimientosService";
-import type {
-  Requerimiento
-} from "../services/requerimientosService";
-import type {
-  CodigoFuente
-} from "../config/sourceSchemas";
 
+import type {
+  FuenteRequerimiento,
+  RequerimientoTabla
+} from "../services/requerimientosService";
+
+
+// =========================================================
+// ESTADO
+// =========================================================
 
 const requerimientos =
-    ref<Requerimiento[]>([]);
+    ref<RequerimientoTabla[]>([]);
 
 const cargando =
     ref(true);
@@ -23,51 +31,37 @@ const error =
 const busqueda =
     ref("");
 
-
-const FUENTES_FILTRO: {
-  codigo: CodigoFuente;
-  nombre: string;
-}[] = [
-  { codigo: "DT", nombre: "Demanda Táctica" },
-  { codigo: "CQ", nombre: "ClearQuest" },
-  { codigo: "LS", nombre: "Listado" }
-];
+const filtroFuente =
+    ref<
+        "TODOS" |
+        FuenteRequerimiento
+    >("TODOS");
 
 
-/*
- * Se muestran los requerimientos presentes en
- * al menos una de las fuentes seleccionadas.
- */
-const fuentesSeleccionadas =
-    ref<CodigoFuente[]>(
-        FUENTES_FILTRO.map(
-            fuente =>
-                fuente.codigo
-        )
-    );
-
-
-function alternarFuente(
-    codigo: CodigoFuente
-) {
-  const seleccion =
-      fuentesSeleccionadas.value;
-
-  fuentesSeleccionadas.value =
-      seleccion.includes(codigo)
-          ? seleccion.filter(item => item !== codigo)
-          : [...seleccion, codigo];
-}
-
+// =========================================================
+// CARGA
+// =========================================================
 
 async function cargarRequerimientos() {
-  cargando.value = true;
-  error.value = "";
+
+  cargando.value =
+      true;
+
+  error.value =
+      "";
 
   try {
-    requerimientos.value =
+
+    const datos =
         await obtenerRequerimientos();
+
+    requerimientos.value =
+        Array.isArray(datos)
+            ? datos
+            : [];
+
   } catch (e) {
+
     console.error(
         "Error cargando requerimientos:",
         e
@@ -77,14 +71,26 @@ async function cargarRequerimientos() {
         e instanceof Error
             ? e.message
             : "No se pudieron cargar los requerimientos.";
+
+    requerimientos.value =
+        [];
+
   } finally {
-    cargando.value = false;
+
+    cargando.value =
+        false;
   }
 }
 
 
-onMounted(cargarRequerimientos);
+onMounted(
+    cargarRequerimientos
+);
 
+
+// =========================================================
+// MÉTRICAS
+// =========================================================
 
 const total =
     computed(
@@ -93,102 +99,193 @@ const total =
     );
 
 
-function totalFuente(
-    codigo: CodigoFuente
-): number {
-  return requerimientos.value
-      .filter(
-          item =>
-              item.fuentes.includes(codigo)
-      )
-      .length;
-}
-
-
 const totalDT =
-    computed(() => totalFuente("DT"));
-
-const totalCQ =
-    computed(() => totalFuente("CQ"));
-
-const totalLS =
-    computed(() => totalFuente("LS"));
-
-const totalTres =
     computed(
         () =>
             requerimientos.value
                 .filter(
                     item =>
-                        item.fuentes.length === 3
+                        item?.enDemandaTactica === true
                 )
                 .length
     );
 
 
+const totalCQ =
+    computed(
+        () =>
+            requerimientos.value
+                .filter(
+                    item =>
+                        item?.enClearQuest === true
+                )
+                .length
+    );
+
+
+const totalAmbas =
+    computed(
+        () =>
+            requerimientos.value
+                .filter(
+                    item =>
+                        item?.enDemandaTactica === true &&
+                        item?.enClearQuest === true
+                )
+                .length
+    );
+
+
+const totalSoloDT =
+    computed(
+        () =>
+            requerimientos.value
+                .filter(
+                    item =>
+                        item?.enDemandaTactica === true &&
+                        item?.enClearQuest !== true
+                )
+                .length
+    );
+
+
+const totalSoloCQ =
+    computed(
+        () =>
+            requerimientos.value
+                .filter(
+                    item =>
+                        item?.enDemandaTactica !== true &&
+                        item?.enClearQuest === true
+                )
+                .length
+    );
+
+
+// =========================================================
+// FILTROS
+// =========================================================
+
 const requerimientosFiltrados =
     computed(() => {
+
       const termino =
           busqueda.value
               .trim()
               .toLowerCase();
 
-      const seleccion =
-          fuentesSeleccionadas.value;
 
       return requerimientos.value
-          .filter(item => {
-            if (
-                !item.fuentes.some(
-                    fuente =>
-                        seleccion.includes(fuente)
-                )
-            ) {
-              return false;
-            }
+          .filter(
+              item => {
 
-            if (!termino) {
-              return true;
-            }
+                if (!item) {
+                  return false;
+                }
 
-            const contenido =
-                [
-                  item.idMantenimiento,
-                  item.idTramite,
-                  item.idDemanda,
-                  item.caso,
-                  item.nombre,
-                  item.estado,
-                  item.responsable,
-                  item.aplicacion
-                ]
-                    .join(" ")
-                    .toLowerCase();
 
-            return contenido.includes(
-                termino
-            );
-          });
+                if (
+                    filtroFuente.value !== "TODOS" &&
+                    item.fuente !== filtroFuente.value
+                ) {
+                  return false;
+                }
+
+
+                if (!termino) {
+                  return true;
+                }
+
+
+                const contenido =
+                    [
+                      item.idDemanda ?? "",
+                      item.idMantenimiento ?? "",
+                      item.nombre ?? "",
+                      item.estado ?? "",
+                      item.responsable ?? "",
+                      item.recurso ?? "",
+                      item.gerencia ?? "",
+                      item.aplicacion ?? "",
+                      item.areaSolicitante ?? ""
+                    ]
+                        .join(" ")
+                        .toLowerCase();
+
+
+                return contenido.includes(
+                    termino
+                );
+              }
+          );
     });
 
 
-function claseFuente(
-    fuente: CodigoFuente
+// =========================================================
+// HELPERS
+// =========================================================
+
+function etiquetaFuente(
+    fuente: FuenteRequerimiento
 ): string {
+
   switch (fuente) {
+
+    case "DT_CQ":
+      return "DT + CQ";
+
     case "DT":
-      return "source-dt";
+      return "DT";
+
     case "CQ":
-      return "source-cq";
-    case "LS":
-      return "source-ls";
+      return "CQ";
+
+    default:
+      return "—";
   }
 }
+
+
+function claseFuente(
+    fuente: FuenteRequerimiento
+): string {
+
+  switch (fuente) {
+
+    case "DT_CQ":
+      return "source-both";
+
+    case "DT":
+      return "source-dt";
+
+    case "CQ":
+      return "source-cq";
+
+    default:
+      return "";
+  }
+}
+
+
+function limpiarFiltro() {
+
+  busqueda.value =
+      "";
+
+  filtroFuente.value =
+      "TODOS";
+}
+
 </script>
 
 
 <template>
+
   <section class="requirements-page">
+
+    <!-- =====================================================
+         CABECERA
+         ===================================================== -->
 
     <div class="page-intro">
 
@@ -217,6 +314,7 @@ function claseFuente(
           :disabled="cargando"
           @click="cargarRequerimientos"
       >
+
         <i
             :class="
             cargando
@@ -226,10 +324,15 @@ function claseFuente(
         />
 
         Actualizar
+
       </button>
 
     </div>
 
+
+    <!-- =====================================================
+         MÉTRICAS
+         ===================================================== -->
 
     <div class="metrics-grid">
 
@@ -257,7 +360,7 @@ function claseFuente(
         <div>
           <span>Demanda Táctica</span>
           <strong>{{ totalDT }}</strong>
-          <small>Presentes en DT</small>
+          <small>{{ totalSoloDT }} exclusivos de DT</small>
         </div>
 
       </div>
@@ -272,22 +375,7 @@ function claseFuente(
         <div>
           <span>ClearQuest</span>
           <strong>{{ totalCQ }}</strong>
-          <small>Presentes en CQ</small>
-        </div>
-
-      </div>
-
-
-      <div class="metric-card">
-
-        <div class="metric-icon ls">
-          <i class="pi pi-list" />
-        </div>
-
-        <div>
-          <span>Listado</span>
-          <strong>{{ totalLS }}</strong>
-          <small>Presentes en Listado</small>
+          <small>{{ totalSoloCQ }} exclusivos de CQ</small>
         </div>
 
       </div>
@@ -300,15 +388,19 @@ function claseFuente(
         </div>
 
         <div>
-          <span>En las 3 fuentes</span>
-          <strong>{{ totalTres }}</strong>
-          <small>DT + Listado + ClearQuest</small>
+          <span>DT + CQ</span>
+          <strong>{{ totalAmbas }}</strong>
+          <small>Presentes en ambas fuentes</small>
         </div>
 
       </div>
 
     </div>
 
+
+    <!-- =====================================================
+         TABLA
+         ===================================================== -->
 
     <div class="table-card">
 
@@ -327,37 +419,42 @@ function claseFuente(
         </div>
 
 
-        <div
+        <select
+            v-model="filtroFuente"
             class="source-filter"
-            role="group"
-            aria-label="Filtrar por fuente"
         >
 
-          <button
-              v-for="fuente in FUENTES_FILTRO"
-              :key="fuente.codigo"
-              type="button"
-              class="source-chip"
-              :class="[
-                claseFuente(fuente.codigo),
-                {
-                  inactive:
-                    !fuentesSeleccionadas.includes(
-                      fuente.codigo
-                    )
-                }
-              ]"
-              :aria-pressed="
-                fuentesSeleccionadas.includes(
-                  fuente.codigo
-                )
-              "
-              @click="alternarFuente(fuente.codigo)"
-          >
-            {{ fuente.nombre }}
-          </button>
+          <option value="TODOS">
+            Todas las fuentes
+          </option>
 
-        </div>
+          <option value="DT_CQ">
+            DT + CQ
+          </option>
+
+          <option value="DT">
+            Solo Demanda Táctica
+          </option>
+
+          <option value="CQ">
+            Solo ClearQuest
+          </option>
+
+        </select>
+
+
+        <button
+            v-if="
+            busqueda ||
+            filtroFuente !== 'TODOS'
+          "
+            class="clear-button"
+            type="button"
+            @click="limpiarFiltro"
+        >
+          <i class="pi pi-filter-slash" />
+          Limpiar
+        </button>
 
 
         <div class="results-count">
@@ -374,6 +471,8 @@ function claseFuente(
 
       </div>
 
+
+      <!-- LOADING -->
 
       <div
           v-if="cargando"
@@ -395,6 +494,8 @@ function claseFuente(
       </div>
 
 
+      <!-- ERROR -->
+
       <div
           v-else-if="error"
           class="state-container"
@@ -415,6 +516,8 @@ function claseFuente(
       </div>
 
 
+      <!-- VACÍO -->
+
       <div
           v-else-if="
           requerimientosFiltrados.length === 0
@@ -432,11 +535,13 @@ function claseFuente(
 
         <span>
           Prueba con otro término de búsqueda
-          o selecciona otra fuente.
+          o cambia el filtro de fuente.
         </span>
 
       </div>
 
+
+      <!-- TABLA -->
 
       <div
           v-else
@@ -449,23 +554,15 @@ function claseFuente(
 
           <tr>
             <th>ID Mantenimiento</th>
-
-            <th>ID Trámite</th>
-
-            <th>ID Demanda / Caso</th>
-
+            <th>ID Demanda</th>
             <th class="requirement-column">
               Requerimiento
             </th>
-
-            <th>Fuentes</th>
-
+            <th>Fuente</th>
             <th>Estado</th>
-
             <th>Responsable / Analista</th>
-
+            <th>Recurso</th>
             <th>Aplicación</th>
-
           </tr>
 
           </thead>
@@ -478,7 +575,7 @@ function claseFuente(
                 item
                 in requerimientosFiltrados
               "
-              :key="item.id"
+              :key="item.idDocumento"
           >
 
             <td>
@@ -503,29 +600,10 @@ function claseFuente(
             <td>
 
                 <span
-                    v-if="item.idTramite"
+                    v-if="item.idDemanda"
                     class="id-secondary"
                 >
-                  {{ item.idTramite }}
-                </span>
-
-              <span
-                  v-else
-                  class="empty-value"
-              >
-                  —
-                </span>
-
-            </td>
-
-
-            <td>
-
-                <span
-                    v-if="item.idDemanda || item.caso"
-                    class="id-secondary"
-                >
-                  {{ item.idDemanda || item.caso }}
+                  {{ item.idDemanda }}
                 </span>
 
               <span
@@ -548,11 +626,9 @@ function claseFuente(
               </strong>
 
               <small
-                  v-if="item.compartenMantenimiento > 0"
+                  v-if="item.gerencia"
               >
-                Comparte mantenimiento con
-                {{ item.compartenMantenimiento }}
-                requerimiento(s) más
+                {{ item.gerencia }}
               </small>
 
             </td>
@@ -560,15 +636,19 @@ function claseFuente(
 
             <td>
 
-                <span class="source-list">
-                  <span
-                      v-for="fuente in item.fuentes"
-                      :key="fuente"
-                      class="source-badge"
-                      :class="claseFuente(fuente)"
-                  >
-                    {{ fuente }}
-                  </span>
+                <span
+                    class="source-badge"
+                    :class="
+                    claseFuente(
+                      item.fuente
+                    )
+                  "
+                >
+                  {{
+                    etiquetaFuente(
+                        item.fuente
+                    )
+                  }}
                 </span>
 
             </td>
@@ -602,6 +682,25 @@ function claseFuente(
 
 
             <td>
+
+                <span
+                    v-if="item.recurso"
+                    class="resource-badge"
+                >
+                  {{ item.recurso }}
+                </span>
+
+              <span
+                  v-else
+                  class="empty-value"
+              >
+                  —
+                </span>
+
+            </td>
+
+
+            <td>
               {{
                 item.aplicacion ||
                 "—"
@@ -619,14 +718,17 @@ function claseFuente(
     </div>
 
   </section>
+
 </template>
 
 
 <style scoped>
+
 .requirements-page {
   width: 100%;
   padding-bottom: 32px;
 }
+
 
 .page-intro {
   display: flex;
@@ -635,6 +737,7 @@ function claseFuente(
   gap: 20px;
   margin-bottom: 18px;
 }
+
 
 .eyebrow {
   display: flex;
@@ -648,6 +751,7 @@ function claseFuente(
   text-transform: uppercase;
 }
 
+
 .page-intro h2 {
   margin: 0;
   color: var(--pi-text);
@@ -656,13 +760,16 @@ function claseFuente(
   letter-spacing: -0.025em;
 }
 
+
 .page-intro p {
   margin: 5px 0 0;
   color: var(--pi-text-muted);
   font-size: 12px;
 }
 
-.refresh-button {
+
+.refresh-button,
+.clear-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -678,22 +785,27 @@ function claseFuente(
   cursor: pointer;
 }
 
-.refresh-button:hover:not(:disabled) {
+
+.refresh-button:hover:not(:disabled),
+.clear-button:hover {
   background: var(--pi-surface-soft);
 }
+
 
 .refresh-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
+
 .metrics-grid {
   display: grid;
   grid-template-columns:
-    repeat(5, minmax(0, 1fr));
+    repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
+
 
 .metric-card {
   display: flex;
@@ -707,6 +819,7 @@ function claseFuente(
   box-shadow: var(--pi-shadow-sm);
 }
 
+
 .metric-icon {
   display: flex;
   align-items: center;
@@ -719,29 +832,29 @@ function claseFuente(
   color: var(--pi-text-secondary);
 }
 
+
 .metric-icon.dt {
   background: #eff6ff;
   color: #2563eb;
 }
+
 
 .metric-icon.cq {
   background: #f5f3ff;
   color: #7c3aed;
 }
 
-.metric-icon.ls {
-  background: #fff7ed;
-  color: #c2410c;
-}
 
 .metric-icon.both {
   background: #ecfdf5;
   color: #16a34a;
 }
 
+
 .metric-icon i {
   font-size: 13px;
 }
+
 
 .metric-card span {
   display: block;
@@ -749,6 +862,7 @@ function claseFuente(
   font-size: 9px;
   font-weight: 600;
 }
+
 
 .metric-card strong {
   display: block;
@@ -758,12 +872,14 @@ function claseFuente(
   font-weight: 700;
 }
 
+
 .metric-card small {
   display: block;
   margin-top: 2px;
   color: var(--pi-text-muted);
   font-size: 8px;
 }
+
 
 .table-card {
   overflow: hidden;
@@ -773,6 +889,7 @@ function claseFuente(
   box-shadow: var(--pi-shadow-sm);
 }
 
+
 .table-toolbar {
   display: flex;
   align-items: center;
@@ -780,6 +897,7 @@ function claseFuente(
   padding: 14px 16px;
   border-bottom: 1px solid var(--pi-border);
 }
+
 
 .search-box {
   display: flex;
@@ -795,6 +913,7 @@ function claseFuente(
   background: var(--pi-surface-soft);
 }
 
+
 .search-box:focus-within {
   border-color: #93c5fd;
   background: #ffffff;
@@ -803,10 +922,12 @@ function claseFuente(
       rgba(37, 99, 235, 0.07);
 }
 
+
 .search-box i {
   color: var(--pi-text-muted);
   font-size: 11px;
 }
+
 
 .search-box input {
   width: 100%;
@@ -817,32 +938,19 @@ function claseFuente(
   font-size: 10px;
 }
 
+
 .source-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.source-chip {
-  height: 30px;
-  padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.source-chip.inactive {
-  border-color: var(--pi-border);
+  height: 36px;
+  min-width: 170px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--pi-border);
+  border-radius: var(--pi-radius-sm);
   background: var(--pi-surface);
-  color: var(--pi-text-muted);
+  color: var(--pi-text-secondary);
+  font-size: 10px;
+  outline: none;
 }
 
-.source-list {
-  display: inline-flex;
-  gap: 4px;
-}
 
 .results-count {
   display: flex;
@@ -852,15 +960,18 @@ function claseFuente(
   white-space: nowrap;
 }
 
+
 .results-count strong {
   color: var(--pi-text);
   font-size: 11px;
 }
 
+
 .results-count span {
   color: var(--pi-text-muted);
   font-size: 9px;
 }
+
 
 .table-wrapper {
   width: 100%;
@@ -868,11 +979,13 @@ function claseFuente(
   overflow: auto;
 }
 
+
 table {
   width: 100%;
   min-width: 1180px;
   border-collapse: collapse;
 }
+
 
 th {
   position: sticky;
@@ -890,6 +1003,7 @@ th {
   white-space: nowrap;
 }
 
+
 td {
   padding: 10px 12px;
   border-bottom: 1px solid #edf2f7;
@@ -898,23 +1012,28 @@ td {
   vertical-align: middle;
 }
 
+
 tbody tr {
   transition:
       background
       var(--pi-transition);
 }
 
+
 tbody tr:hover {
   background: #fafcff;
 }
+
 
 .requirement-column {
   min-width: 270px;
 }
 
+
 .requirement-cell {
   max-width: 360px;
 }
+
 
 .requirement-cell strong {
   display: block;
@@ -926,6 +1045,7 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+
 .requirement-cell small {
   display: block;
   margin-top: 3px;
@@ -935,6 +1055,7 @@ tbody tr:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 
 .id-value {
   color: var(--pi-primary);
@@ -949,6 +1070,7 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+
 .id-secondary {
   color: var(--pi-text-secondary);
   font-family:
@@ -961,12 +1083,15 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+
 .empty-value {
   color: #cbd5e1;
 }
 
+
 .source-badge,
-.status-badge {
+.status-badge,
+.resource-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 7px;
@@ -976,25 +1101,36 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+
 .source-dt {
   background: #eff6ff;
   color: #2563eb;
 }
+
 
 .source-cq {
   background: #f5f3ff;
   color: #7c3aed;
 }
 
-.source-ls {
-  background: #fff7ed;
-  color: #c2410c;
+
+.source-both {
+  background: #ecfdf5;
+  color: #16a34a;
 }
+
 
 .status-badge {
   background: var(--pi-surface-muted);
   color: var(--pi-text-secondary);
 }
+
+
+.resource-badge {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 
 .state-container {
   display: flex;
@@ -1005,6 +1141,7 @@ tbody tr:hover {
   padding: 32px;
   text-align: center;
 }
+
 
 .state-icon {
   display: flex;
@@ -1018,20 +1155,24 @@ tbody tr:hover {
   color: var(--pi-text-muted);
 }
 
+
 .state-icon.loading {
   background: var(--pi-primary-soft);
   color: var(--pi-primary);
 }
+
 
 .state-icon.error {
   background: var(--pi-danger-soft);
   color: var(--pi-danger);
 }
 
+
 .state-container strong {
   color: var(--pi-text);
   font-size: 11px;
 }
+
 
 .state-container span {
   max-width: 420px;
@@ -1040,37 +1181,49 @@ tbody tr:hover {
   font-size: 9px;
 }
 
+
 @media (max-width: 1050px) {
+
   .metrics-grid {
     grid-template-columns:
       repeat(2, minmax(0, 1fr));
   }
 
+
   .table-toolbar {
     flex-wrap: wrap;
   }
 
+
   .results-count {
     margin-left: 0;
   }
+
 }
 
+
 @media (max-width: 650px) {
+
   .page-intro {
     flex-direction: column;
   }
 
+
   .metrics-grid {
     grid-template-columns: 1fr;
   }
+
 
   .search-box {
     min-width: 100%;
     max-width: none;
   }
 
+
   .source-filter {
     flex: 1;
   }
+
 }
+
 </style>
