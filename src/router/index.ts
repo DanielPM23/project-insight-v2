@@ -7,6 +7,7 @@ import MainLayout from "../layouts/MainLayout.vue";
 
 import DashboardView from "../views/DashboardView.vue";
 import RequerimientosView from "../views/RequerimientosView.vue";
+import RequerimientoDetalleView from "../views/RequerimientoDetalleView.vue";
 import ImportacionesView from "../views/ImportacionesView.vue";
 import PlanificacionView from "../views/PlanificacionView.vue";
 import ReportesView from "../views/ReportesView.vue";
@@ -57,6 +58,26 @@ const router = createRouter({
                             "Requerimientos",
                         subtitulo:
                             "Consulta y gestión de requerimientos"
+                    }
+                },
+
+                {
+                    path:
+                        "requerimientos/:id",
+                    name:
+                        "requerimiento-detalle",
+
+                    component:
+                    RequerimientoDetalleView,
+
+                    props:
+                        true,
+
+                    meta: {
+                        titulo:
+                            "Detalle del requerimiento",
+                        subtitulo:
+                            "Todos los campos de Demanda Táctica, Listado y ClearQuest"
                     }
                 },
 

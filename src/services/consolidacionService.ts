@@ -50,6 +50,13 @@ export interface Requerimiento {
     estado: string;
     responsable: string;
     aplicacion: string;
+    gerencia: string;
+
+    /*
+     * Año del mantenimiento o, si no tiene,
+     * del trámite (2024-M0243 → 2024).
+     */
+    anio: string;
 
     fuentes: CodigoFuente[];
 
@@ -121,6 +128,8 @@ function crearRequerimiento(
         estado: "",
         responsable: "",
         aplicacion: "",
+        gerencia: "",
+        anio: "",
         fuentes: [],
         demandaTactica: null,
         listado: [],
@@ -204,6 +213,14 @@ function completarResumen(
     requerimiento.aplicacion =
         texto(ls?.datos.aplicativo) ||
         texto(cq?.datos.aplicacion_cq);
+
+    requerimiento.gerencia =
+        texto(dt?.datos.gerencia) ||
+        texto(ls?.datos.gerencia_usuaria);
+
+    requerimiento.anio =
+        (requerimiento.idMantenimiento || requerimiento.idTramite)
+            .slice(0, 4);
 
     const fuentes =
         new Set<CodigoFuente>();
@@ -480,12 +497,28 @@ export function consolidarRequerimientos(
     }
 
 
-    return requerimientos.sort((a, b) =>
-        (b.idMantenimiento || b.idTramite || b.id)
-            .localeCompare(
-                a.idMantenimiento || a.idTramite || a.id,
-                "es",
-                { numeric: true }
-            )
-    );
+    /*
+     * Primero los más recientes por mantenimiento o
+     * trámite; al final los que no tienen ninguno.
+     */
+    const claveOrden = (
+        requerimiento: Requerimiento
+    ): string =>
+        requerimiento.idMantenimiento ||
+        requerimiento.idTramite;
+
+    return requerimientos.sort((a, b) => {
+        const claveA = claveOrden(a);
+        const claveB = claveOrden(b);
+
+        if (!claveA || !claveB) {
+            return Number(!claveA) - Number(!claveB);
+        }
+
+        return claveB.localeCompare(
+            claveA,
+            "es",
+            { numeric: true }
+        );
+    });
 }
