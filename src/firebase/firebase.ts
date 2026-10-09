@@ -4,7 +4,8 @@ import { getFirestore } from "firebase/firestore";
 
 
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    apiKey:
+    import.meta.env.VITE_FIREBASE_API_KEY,
 
     authDomain:
     import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -28,6 +29,22 @@ const firebaseConfig = {
 
 const app = initializeApp(
     firebaseConfig
+);
+
+
+console.log(
+    "🔥 Project ID:",
+    app.options.projectId
+);
+
+console.log(
+    "🔥 Auth Domain:",
+    app.options.authDomain
+);
+
+console.log(
+    "🔥 App ID:",
+    app.options.appId
 );
 
 
