@@ -3,6 +3,12 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/authStore";
 import { ROLES } from "../../services/usuariosService";
+import { storeToRefs } from "pinia";
+import Popover from "primevue/popover";
+import AlertaTag from "../alertas/AlertaTag.vue";
+import { useAlertasStore } from "../../stores/alertasStore";
+import { textoDias } from "../../services/alertasService";
+import { formatearFecha } from "../../utils/fechas";
 
 defineEmits<{
   alternarSidebar: [];
@@ -13,6 +19,9 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const menuAbierto = ref(false);
+
+const { pendientes, conteo } = storeToRefs(useAlertasStore());
+const panelAlertas = ref<InstanceType<typeof Popover> | null>(null);
 
 const nombreUsuario = computed(
     () => auth.perfil?.nombre || auth.usuario?.email || "Usuario"
@@ -87,12 +96,60 @@ const subtitulo = computed(
       </div>
 
       <button
-          class="icon-button"
-          aria-label="Notificaciones"
-          title="Notificaciones"
+          class="icon-button bell-button"
+          type="button"
+          aria-label="Alertas"
+          :title="pendientes.length ? `${pendientes.length} alertas de desarrollo` : 'Sin alertas pendientes'"
+          @click="panelAlertas?.toggle($event)"
       >
         <i class="pi pi-bell" />
+        <span
+            v-if="pendientes.length"
+            class="bell-badge"
+            :class="{ urgente: conteo.VENCIDO + conteo.VENCE_HOY > 0 }"
+        >
+          {{ pendientes.length > 99 ? "99+" : pendientes.length }}
+        </span>
       </button>
+
+      <Popover ref="panelAlertas" class="alertas-popover">
+        <div class="alertas-panel">
+          <div class="alertas-panel-header">
+            <strong>Alertas de desarrollo</strong>
+            <span>
+              {{ conteo.VENCIDO }} vencidas · {{ conteo.VENCE_HOY }} hoy · {{ conteo.PROXIMO }} próximas
+            </span>
+          </div>
+
+          <p v-if="pendientes.length === 0" class="alertas-vacio">
+            <i class="pi pi-check-circle" /> No hay desarrollos vencidos ni por vencer.
+          </p>
+
+          <ul v-else>
+            <li v-for="alerta in pendientes.slice(0, 6)" :key="alerta.idRequerimiento">
+              <RouterLink
+                  :to="{ name: 'requerimiento-detalle', params: { id: alerta.idRequerimiento } }"
+                  @click="panelAlertas?.hide()"
+              >
+                <AlertaTag :alerta="alerta" />
+                <span class="alerta-texto">
+                  <strong>{{ alerta.idMantenimiento || alerta.idTramite }}</strong>
+                  <span>{{ alerta.nombre }}</span>
+                  <small>Fin {{ formatearFecha(alerta.fechaFin) }} · {{ textoDias(alerta.dias) }}</small>
+                </span>
+              </RouterLink>
+            </li>
+          </ul>
+
+          <RouterLink
+              :to="{ name: 'alertas' }"
+              class="ver-todas"
+              @click="panelAlertas?.hide()"
+          >
+            Ver todas las alertas <i class="pi pi-arrow-right" />
+          </RouterLink>
+        </div>
+      </Popover>
 
       <div class="user-menu">
         <button
@@ -298,6 +355,106 @@ const subtitulo = computed(
 
   font-size: 9px;
   font-weight: 600;
+}
+
+.bell-button {
+  position: relative;
+}
+
+.bell-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--pi-primary);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
+.bell-badge.urgente {
+  background: var(--pi-danger);
+}
+
+.alertas-panel {
+  width: 340px;
+}
+
+.alertas-panel-header strong {
+  display: block;
+  color: var(--pi-text);
+  font-size: 13px;
+}
+
+.alertas-panel-header span {
+  color: var(--pi-text-muted);
+  font-size: 11px;
+}
+
+.alertas-panel ul {
+  margin: 10px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.alertas-panel li a {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: var(--pi-radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.alertas-panel li a:hover {
+  background: var(--pi-surface-soft);
+}
+
+.alerta-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.alerta-texto strong {
+  color: var(--pi-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.alerta-texto span {
+  overflow: hidden;
+  color: var(--pi-text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alerta-texto small {
+  color: var(--pi-text-muted);
+  font-size: 10px;
+}
+
+.alertas-vacio {
+  margin: 12px 0;
+  color: var(--pi-text-muted);
+  font-size: 12px;
+}
+
+.ver-todas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--pi-surface-muted);
+  color: var(--pi-primary);
+  font-size: 12px;
+  text-decoration: none;
 }
 
 .user-menu {

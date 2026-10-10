@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { RouterView } from "vue-router";
 
 import AppSidebar from "../components/navigation/AppSidebar.vue";
 import AppTopbar from "../components/navigation/AppTopbar.vue";
+import { useAlertasStore } from "../stores/alertasStore";
+
+/*
+ * Las alertas se calculan al entrar para mostrarlas en el
+ * menú y la campana desde cualquier página.
+ */
+const alertasStore = useAlertasStore();
+
+onMounted(() => alertasStore.cargar());
 
 const sidebarColapsado = ref(false);
 

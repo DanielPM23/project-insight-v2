@@ -26,6 +26,10 @@ import {
     obtenerIdConfiguracion
 } from "./registrosFuente";
 
+import {
+    usuarioActual
+} from "./auditoriaService";
+
 
 export async function establecerBaseline(
     registros: Record<string, unknown>[],
@@ -185,11 +189,17 @@ export async function establecerBaseline(
             modificados:
                 0,
 
+            reactivados:
+                0,
+
             sin_cambios:
                 0,
 
             inactivos:
                 0,
+
+            usuario:
+                usuarioActual(),
 
             estado:
                 "COMPLETADA",

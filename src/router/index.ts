@@ -12,6 +12,7 @@ import ImportacionesView from "../views/ImportacionesView.vue";
 import PlanificacionView from "../views/PlanificacionView.vue";
 import ReportesView from "../views/ReportesView.vue";
 import AuditoriaView from "../views/AuditoriaView.vue";
+import AlertasView from "../views/AlertasView.vue";
 import ConfiguracionView from "../views/ConfiguracionView.vue";
 import UsuariosView from "../views/UsuariosView.vue";
 import LoginView from "../views/LoginView.vue";
@@ -149,6 +150,21 @@ const router = createRouter({
 
                 {
                     path:
+                        "alertas",
+                    name:
+                        "alertas",
+                    component:
+                    AlertasView,
+                    meta: {
+                        titulo:
+                            "Alertas",
+                        subtitulo:
+                            "Seguimiento de fechas de fin de desarrollo"
+                    }
+                },
+
+                {
+                    path:
                         "auditoria",
                     name:
                         "auditoria",
@@ -159,7 +175,7 @@ const router = createRouter({
                         titulo:
                             "Auditoría",
                         subtitulo:
-                            "Consistencia y comparación entre fuentes"
+                            "Historial de cargas y cambios por requerimiento"
                     }
                 },
 

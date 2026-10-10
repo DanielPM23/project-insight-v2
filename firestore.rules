@@ -96,6 +96,14 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    // Auditoría: un documento por registro que cambió en
+    // cada carga. Nadie lo modifica ni borra después.
+    match /cambios_v3/{id} {
+      allow read: if activo();
+      allow create: if esAdmin();
+      allow update, delete: if false;
+    }
+
     match /configuracion_v3/{id} {
       allow read: if activo();
       allow write: if esAdmin();

@@ -13,6 +13,11 @@ import {
 } from "../stores/requerimientosStore";
 
 import BarList from "../components/dashboard/BarList.vue";
+import AlertasResumen from "../components/alertas/AlertasResumen.vue";
+
+import {
+  useAlertasStore
+} from "../stores/alertasStore";
 
 import type {
   BarItem
@@ -37,9 +42,13 @@ const {
 } = storeToRefs(store);
 
 
-onMounted(
-    () => store.cargar()
-);
+const alertasStore =
+    useAlertasStore();
+
+onMounted(() => {
+  store.cargar();
+  alertasStore.cargar();
+});
 
 
 // =========================================================
@@ -84,7 +93,7 @@ const indicadores =
         clase: "cq"
       },
       {
-        titulo: "Con alertas",
+        titulo: "Diferencias",
         valor: contar(item => item.alertas.length > 0),
         detalle: "Diferencias entre fuentes",
         icono: "pi pi-exclamation-triangle",
@@ -285,7 +294,7 @@ const actividadesCQ =
           class="refresh-button"
           type="button"
           :disabled="cargando"
-          @click="store.cargar(true)"
+          @click="alertasStore.cargar(true)"
       >
         <i
             :class="
@@ -330,6 +339,8 @@ const actividadesCQ =
       </div>
     </div>
 
+
+    <AlertasResumen class="alertas" />
 
     <div class="dashboard-grid">
 
@@ -534,6 +545,10 @@ const actividadesCQ =
   margin-top: 4px;
   color: #94a3b8;
   font-size: 10px;
+}
+
+.alertas {
+  margin-bottom: 18px;
 }
 
 .dashboard-grid {

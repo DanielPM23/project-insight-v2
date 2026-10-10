@@ -37,6 +37,9 @@ export const COLLECTION_CARGAS =
 export const COLLECTION_CONFIGURACION =
     "configuracion_v3";
 
+export const COLLECTION_CAMBIOS =
+    "cambios_v3";
+
 export const TAMANO_BATCH =
     400;
 

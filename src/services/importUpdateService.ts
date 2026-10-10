@@ -25,16 +25,28 @@ import type {
 } from "../config/sourceSchemas";
 
 import {
+    COLLECTION_CAMBIOS,
     COLLECTION_CARGAS,
     COLLECTION_CONFIGURACION,
     COLLECTION_REGISTROS,
     TAMANO_BATCH,
     construirRegistroFuente,
-    contenidoComparable,
     datosDocumento,
     leerRegistroFuente,
     obtenerIdConfiguracion
 } from "./registrosFuente";
+
+import {
+    camposCambiados,
+    usuarioActual,
+    valorComparable
+} from "./auditoriaService";
+
+import type {
+    CambioFechaFin,
+    CampoCambiado,
+    TipoCambio
+} from "./auditoriaService";
 
 import type {
     RegistroFuente
@@ -45,11 +57,8 @@ import type {
 // TIPOS
 // =========================================================
 
-export interface CambioCampo {
-    campo: string;
-    anterior: unknown;
-    nuevo: unknown;
-}
+export type CambioCampo =
+    CampoCambiado;
 
 
 export interface RegistroComparacion {
@@ -78,6 +87,12 @@ export interface ResultadoComparacionImportacion {
     modificados:
         RegistroModificado[];
 
+    /*
+     * Estaban inactivos y vuelven a aparecer en el Excel.
+     */
+    reactivados:
+        RegistroModificado[];
+
     sinCambios: number;
 
     inactivos:
@@ -86,6 +101,7 @@ export interface ResultadoComparacionImportacion {
     resumen: {
         nuevos: number;
         modificados: number;
+        reactivados: number;
         sinCambios: number;
         inactivos: number;
     };
@@ -95,181 +111,6 @@ export interface ResultadoComparacionImportacion {
 // =========================================================
 // HELPERS
 // =========================================================
-
-function valorComparable(
-    valor: unknown
-): unknown {
-
-    if (
-        valor === undefined ||
-        valor === null
-    ) {
-        return null;
-    }
-
-
-    if (
-        valor instanceof Date
-    ) {
-
-        return valor.toISOString();
-    }
-
-
-    if (
-        typeof valor === "object"
-    ) {
-
-        const posibleTimestamp =
-            valor as {
-                toDate?: () => Date;
-            };
-
-
-        if (
-            typeof posibleTimestamp.toDate ===
-            "function"
-        ) {
-
-            return posibleTimestamp
-                .toDate()
-                .toISOString();
-        }
-
-
-        if (
-            Array.isArray(valor)
-        ) {
-
-            return valor.map(
-                elemento =>
-                    valorComparable(
-                        elemento
-                    )
-            );
-        }
-
-
-        const objeto =
-            valor as Record<
-                string,
-                unknown
-            >;
-
-
-        const normalizado:
-            Record<string, unknown> = {};
-
-
-        for (
-            const clave
-            of Object
-            .keys(objeto)
-            .sort()
-            ) {
-
-            normalizado[clave] =
-                valorComparable(
-                    objeto[clave]
-                );
-        }
-
-
-        return normalizado;
-    }
-
-
-    if (
-        typeof valor === "string"
-    ) {
-
-        return valor.trim();
-    }
-
-
-    return valor;
-}
-
-
-function registrosIguales(
-    anterior: Record<string, unknown>,
-    nuevo: Record<string, unknown>
-): boolean {
-
-    return (
-        JSON.stringify(
-            valorComparable(
-                anterior
-            )
-        ) ===
-        JSON.stringify(
-            valorComparable(
-                nuevo
-            )
-        )
-    );
-}
-
-
-function obtenerCambios(
-    anterior: Record<string, unknown>,
-    nuevo: Record<string, unknown>
-): CambioCampo[] {
-
-    const claves =
-        new Set([
-            ...Object.keys(anterior),
-            ...Object.keys(nuevo)
-        ]);
-
-
-    const cambios:
-        CambioCampo[] = [];
-
-
-    for (
-        const clave
-        of Array.from(claves).sort()
-        ) {
-
-        const anteriorComparable =
-            valorComparable(
-                anterior[clave]
-            );
-
-
-        const nuevoComparable =
-            valorComparable(
-                nuevo[clave]
-            );
-
-
-        if (
-            JSON.stringify(
-                anteriorComparable
-            ) !==
-            JSON.stringify(
-                nuevoComparable
-            )
-        ) {
-
-            cambios.push({
-                campo:
-                clave,
-
-                anterior:
-                anteriorComparable,
-
-                nuevo:
-                nuevoComparable
-            });
-        }
-    }
-
-
-    return cambios;
-}
-
 
 function resumenRegistro(
     registro: RegistroFuente
@@ -378,9 +219,20 @@ export async function existeBaselineFuente(
 // COMPARACIÓN
 // =========================================================
 
+/*
+ * Un registro que hay que escribir y por qué.
+ */
+interface Escritura {
+    registro: RegistroFuente;
+    tipo: Exclude<TipoCambio, "INACTIVADO">;
+    campos: CampoCambiado[];
+}
+
+
 interface ComparacionInterna {
     resultado: ResultadoComparacionImportacion;
-    aEscribir: RegistroFuente[];
+    escrituras: Escritura[];
+    inactivados: RegistroFuente[];
 }
 
 
@@ -390,20 +242,13 @@ function compararRegistros(
     guardados: Map<string, RegistroFuente>
 ): ComparacionInterna {
 
-    const nuevos:
-        RegistroComparacion[] = [];
+    const nuevos: RegistroComparacion[] = [];
+    const modificados: RegistroModificado[] = [];
+    const reactivados: RegistroModificado[] = [];
+    const escrituras: Escritura[] = [];
+    const presentes = new Set<string>();
 
-    const modificados:
-        RegistroModificado[] = [];
-
-    const aEscribir:
-        RegistroFuente[] = [];
-
-    let sinCambios =
-        0;
-
-    const presentes =
-        new Set<string>();
+    let sinCambios = 0;
 
 
     for (const registroOriginal of registros) {
@@ -414,133 +259,72 @@ function compararRegistros(
                 fuente
             );
 
-
-        presentes.add(
-            registro.idDocumento
-        );
-
+        presentes.add(registro.idDocumento);
 
         const anterior =
-            guardados.get(
-                registro.idDocumento
-            );
+            guardados.get(registro.idDocumento);
 
 
-        /*
-         * Un registro que estaba inactivo y vuelve a
-         * aparecer en el Excel se trata como nuevo.
-         */
-        if (
-            !anterior ||
-            !anterior.activo
-        ) {
-
-            nuevos.push(
-                resumenRegistro(
-                    registro
-                )
-            );
-
-            aEscribir.push(
-                registro
-            );
-
+        if (!anterior) {
+            nuevos.push(resumenRegistro(registro));
+            escrituras.push({ registro, tipo: "NUEVO", campos: [] });
             continue;
         }
 
 
-        const contenidoAnterior =
-            contenidoComparable(
-                anterior.datos,
-                anterior.extra
-            );
-
-        const contenidoNuevo =
-            contenidoComparable(
-                registro.datos,
-                registro.extra
-            );
+        const campos =
+            camposCambiados(anterior, registro, fuente);
 
 
-        if (
-            registrosIguales(
-                contenidoAnterior,
-                contenidoNuevo
-            )
-        ) {
+        /*
+         * Un registro inactivo que vuelve a aparecer se
+         * reactiva aunque su contenido no haya cambiado.
+         */
+        if (!anterior.activo) {
+            reactivados.push({ ...resumenRegistro(registro), cambios: campos });
+            escrituras.push({ registro, tipo: "REACTIVADO", campos });
+            continue;
+        }
+
+
+        if (campos.length === 0) {
             sinCambios += 1;
             continue;
         }
 
 
-        modificados.push({
-            ...resumenRegistro(
-                registro
-            ),
-
-            cambios:
-                obtenerCambios(
-                    contenidoAnterior,
-                    contenidoNuevo
-                )
-        });
+        modificados.push({ ...resumenRegistro(registro), cambios: campos });
+        escrituras.push({ registro, tipo: "MODIFICADO", campos });
+    }
 
 
-        aEscribir.push(
-            registro
+    const inactivados =
+        Array.from(guardados.values()).filter(
+            registro =>
+                registro.activo &&
+                !presentes.has(registro.idDocumento)
         );
-    }
-
-
-    const inactivos:
-        RegistroComparacion[] = [];
-
-
-    for (const registro of guardados.values()) {
-
-        if (
-            registro.activo &&
-            !presentes.has(
-                registro.idDocumento
-            )
-        ) {
-            inactivos.push(
-                resumenRegistro(
-                    registro
-                )
-            );
-        }
-    }
 
 
     return {
-        aEscribir,
+        escrituras,
+        inactivados,
 
         resultado: {
             fuente,
-
-            totalArchivo:
-            registros.length,
-
+            totalArchivo: registros.length,
             nuevos,
-
             modificados,
-
+            reactivados,
             sinCambios,
-
-            inactivos,
+            inactivos: inactivados.map(resumenRegistro),
 
             resumen: {
-                nuevos:
-                nuevos.length,
-
-                modificados:
-                modificados.length,
-
+                nuevos: nuevos.length,
+                modificados: modificados.length,
+                reactivados: reactivados.length,
                 sinCambios,
-
-                inactivos:
-                inactivos.length
+                inactivos: inactivados.length
             }
         }
     };
@@ -588,6 +372,11 @@ export async function compararConUltimaCarga(
 // APLICAR ACTUALIZACIÓN
 // =========================================================
 
+/*
+ * Cada registro se escribe junto con su documento de
+ * auditoría en el mismo lote: o quedan los dos o ninguno.
+ * Por eso cada lote lleva la mitad de elementos.
+ */
 async function escribirEnLotes<T>(
     elementos: T[],
     escribir: (
@@ -596,34 +385,87 @@ async function escribirEnLotes<T>(
     ) => void
 ) {
 
+    const porLote =
+        Math.floor(TAMANO_BATCH / 2);
+
     for (
         let inicio = 0;
         inicio < elementos.length;
-        inicio += TAMANO_BATCH
+        inicio += porLote
     ) {
 
         const batch =
-            writeBatch(
-                db
-            );
+            writeBatch(db);
 
-
-        for (
-            const elemento
-            of elementos.slice(
-                inicio,
-                inicio + TAMANO_BATCH
-            )
-            ) {
-            escribir(
-                batch,
-                elemento
-            );
+        for (const elemento of elementos.slice(inicio, inicio + porLote)) {
+            escribir(batch, elemento);
         }
-
 
         await batch.commit();
     }
+}
+
+
+function documentoCambio(
+    idCarga: string,
+    registro: RegistroFuente,
+    tipo: TipoCambio,
+    campos: CampoCambiado[],
+    usuario: ReturnType<typeof usuarioActual>
+) {
+    return {
+        ref: doc(
+            db,
+            COLLECTION_CAMBIOS,
+            `${idCarga}__${registro.idDocumento}`
+        ),
+
+        datos: {
+            id_carga: idCarga,
+            fuente: registro.fuente,
+            codigo_fuente: registro.codigoFuente,
+            id_documento: registro.idDocumento,
+            clave: registro.clave,
+            id_mantenimiento: registro.idMantenimiento,
+            id_tramite: registro.idTramite,
+            nombre: registro.nombre,
+            tipo,
+            campos,
+            usuario,
+            fecha: serverTimestamp()
+        }
+    };
+}
+
+
+/*
+ * Cambios de la fecha final de desarrollo (DT) en esta
+ * carga, para la alerta "fecha modificada recientemente".
+ */
+function cambiosFechaFin(
+    escrituras: Escritura[]
+): CambioFechaFin[] {
+    const resultado: CambioFechaFin[] = [];
+
+    for (const escritura of escrituras) {
+        if (escritura.registro.codigoFuente !== "DT") {
+            continue;
+        }
+
+        const campo =
+            escritura.campos.find(item => item.campo === "fin_desarrollo");
+
+        if (campo) {
+            resultado.push({
+                idDocumento: escritura.registro.idDocumento,
+                idMantenimiento: escritura.registro.idMantenimiento ?? "",
+                anterior: campo.anterior as string | null,
+                nuevo: valorComparable(campo.nuevo) as string | null
+            });
+        }
+    }
+
+    return resultado;
 }
 
 
@@ -662,7 +504,8 @@ export async function aplicarActualizacionFuente(
 
     const {
         resultado: comparacion,
-        aEscribir
+        escrituras,
+        inactivados
     } =
         compararRegistros(
             registros,
@@ -676,6 +519,40 @@ export async function aplicarActualizacionFuente(
     const idCarga =
         `carga_${FUENTES[fuente].codigo.toLowerCase()}_${Date.now()}`;
 
+    const usuario =
+        usuarioActual();
+
+    const cargaRef =
+        doc(db, COLLECTION_CARGAS, idCarga);
+
+
+    /*
+     * La carga se registra antes de escribir; si algo
+     * falla a mitad queda como EN_PROCESO y se sabe qué
+     * registros alcanzó a tocar.
+     */
+    await setDoc(
+        cargaRef,
+        {
+            id_carga: idCarga,
+            tipo: "ACTUALIZACION",
+            fuente,
+            archivo: archivoNombre,
+            hoja,
+            fila_cabecera: filaCabecera,
+            registros_total: comparacion.totalArchivo,
+            nuevos: comparacion.resumen.nuevos,
+            modificados: comparacion.resumen.modificados,
+            reactivados: comparacion.resumen.reactivados,
+            sin_cambios: comparacion.resumen.sinCambios,
+            inactivos: comparacion.resumen.inactivos,
+            fechas_fin_modificadas: cambiosFechaFin(escrituras),
+            usuario,
+            estado: "EN_PROCESO",
+            fecha_carga: serverTimestamp()
+        }
+    );
+
 
     /*
      * Se reemplaza el documento completo (sin merge)
@@ -683,102 +560,54 @@ export async function aplicarActualizacionFuente(
      * en el Excel.
      */
     await escribirEnLotes(
-        aEscribir,
-        (batch, registro) =>
+        escrituras,
+        (batch, { registro, tipo, campos }) => {
             batch.set(
-                doc(
-                    db,
-                    COLLECTION_REGISTROS,
-                    registro.idDocumento
-                ),
+                doc(db, COLLECTION_REGISTROS, registro.idDocumento),
                 {
-                    ...datosDocumento(
-                        registro
-                    ),
-
-                    ultima_carga:
-                    idCarga,
-
-                    fecha_actualizacion:
-                        serverTimestamp()
+                    ...datosDocumento(registro),
+                    ultima_carga: idCarga,
+                    fecha_actualizacion: serverTimestamp()
                 }
-            )
+            );
+
+            const cambio =
+                documentoCambio(idCarga, registro, tipo, campos, usuario);
+
+            batch.set(cambio.ref, cambio.datos);
+        }
     );
 
 
     await escribirEnLotes(
-        comparacion.inactivos,
-        (batch, item) =>
+        inactivados,
+        (batch, registro) => {
             batch.set(
-                doc(
-                    db,
-                    COLLECTION_REGISTROS,
-                    item.idDocumento
-                ),
+                doc(db, COLLECTION_REGISTROS, registro.idDocumento),
                 {
-                    activo:
-                        false,
-
-                    ultima_carga:
-                    idCarga,
-
-                    fecha_inactivacion:
-                        serverTimestamp(),
-
-                    fecha_actualizacion:
-                        serverTimestamp()
+                    activo: false,
+                    ultima_carga: idCarga,
+                    fecha_inactivacion: serverTimestamp(),
+                    fecha_actualizacion: serverTimestamp()
                 },
-                {
-                    merge: true
-                }
-            )
+                { merge: true }
+            );
+
+            const cambio =
+                documentoCambio(idCarga, registro, "INACTIVADO", [], usuario);
+
+            batch.set(cambio.ref, cambio.datos);
+        }
     );
 
 
     await setDoc(
-        doc(
-            db,
-            COLLECTION_CARGAS,
-            idCarga
-        ),
+        cargaRef,
         {
-            id_carga:
-            idCarga,
-
-            tipo:
-                "ACTUALIZACION",
-
-            fuente,
-
-            archivo:
-            archivoNombre,
-
-            hoja,
-
-            fila_cabecera:
-            filaCabecera,
-
-            registros_total:
-            comparacion.totalArchivo,
-
-            nuevos:
-            comparacion.resumen.nuevos,
-
-            modificados:
-            comparacion.resumen.modificados,
-
-            sin_cambios:
-            comparacion.resumen.sinCambios,
-
-            inactivos:
-            comparacion.resumen.inactivos,
-
-            estado:
-                "COMPLETADA",
-
-            fecha_carga:
-                serverTimestamp()
-        }
+            estado: "COMPLETADA",
+            fecha_fin: serverTimestamp()
+        },
+        { merge: true }
     );
 
 

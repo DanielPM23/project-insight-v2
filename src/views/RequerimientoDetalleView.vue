@@ -26,6 +26,30 @@ import type {
   RegistroFuente
 } from "../services/registrosFuente";
 
+import LineaTiempoCambios from "../components/auditoria/LineaTiempoCambios.vue";
+import AlertaTag from "../components/alertas/AlertaTag.vue";
+
+import {
+  listarCambiosDeRegistros
+} from "../services/auditoriaService";
+
+import type {
+  CambioRegistro
+} from "../services/auditoriaService";
+
+import {
+  NIVELES_ALERTA,
+  textoDias
+} from "../services/alertasService";
+
+import {
+  useAlertasStore
+} from "../stores/alertasStore";
+
+import {
+  formatearFecha
+} from "../utils/fechas";
+
 
 const props =
     defineProps<{
@@ -44,9 +68,13 @@ const {
 } = storeToRefs(store);
 
 
-onMounted(
-    () => store.cargar()
-);
+const alertasStore =
+    useAlertasStore();
+
+onMounted(() => {
+  store.cargar();
+  alertasStore.cargar();
+});
 
 
 const requerimiento =
@@ -110,7 +138,70 @@ const pestanas =
 
 
 const pestanaActiva =
-    ref<CodigoFuente>("DT");
+    ref<CodigoFuente | "HIST">("DT");
+
+
+// =========================================================
+// ALERTA E HISTORIAL
+// =========================================================
+
+const alerta =
+    computed(() =>
+        requerimiento.value
+            ? alertasStore.porRequerimiento.get(requerimiento.value.id) ?? null
+            : null
+    );
+
+
+const historial =
+    ref<CambioRegistro[]>([]);
+
+const cargandoHistorial =
+    ref(false);
+
+const historialDe =
+    ref("");
+
+
+/*
+ * El historial se lee solo al abrir la pestaña.
+ */
+async function cargarHistorial() {
+  const actual =
+      requerimiento.value;
+
+  if (!actual || historialDe.value === actual.id) {
+    return;
+  }
+
+  historialDe.value = actual.id;
+  cargandoHistorial.value = true;
+  historial.value = [];
+
+  try {
+    historial.value =
+        await listarCambiosDeRegistros([
+          actual.demandaTactica?.idDocumento ?? "",
+          ...actual.listado.map(item => item.idDocumento),
+          ...actual.clearQuest.map(item => item.idDocumento)
+        ]);
+  } catch (e) {
+    console.error("Error leyendo el historial:", e);
+    historialDe.value = "";
+  } finally {
+    cargandoHistorial.value = false;
+  }
+}
+
+
+watch(
+    pestanaActiva,
+    valor => {
+      if (valor === "HIST") {
+        cargarHistorial();
+      }
+    }
+);
 
 
 watch(
@@ -383,6 +474,30 @@ function claseFuente(
 
 
       <div
+          v-if="alerta"
+          class="desarrollo-box"
+          :class="alerta.nivel ? NIVELES_ALERTA[alerta.nivel].severidad : 'modificada'"
+          role="status"
+      >
+        <AlertaTag :alerta="alerta" />
+        <div>
+          <strong>
+            {{ alerta.nivel ? NIVELES_ALERTA[alerta.nivel].titulo : "Fecha de desarrollo modificada recientemente" }}
+          </strong>
+          <p>
+            Fecha final de desarrollo: {{ formatearFecha(alerta.fechaFin) }}
+            <template v-if="alerta.nivel"> · {{ textoDias(alerta.dias) }}</template>
+            <template v-if="alerta.fechaModificada">
+              · Cambió de {{ formatearFecha(alerta.fechaModificada.anterior) || "sin fecha" }}
+              a {{ formatearFecha(alerta.fechaModificada.nuevo) || "sin fecha" }}
+              en la carga del {{ formatearFecha(alerta.fechaModificada.fechaCarga) }}
+            </template>
+          </p>
+        </div>
+      </div>
+
+
+      <div
           v-if="requerimiento.alertas.length > 0"
           class="alert-box"
           role="alert"
@@ -443,13 +558,38 @@ function claseFuente(
             {{ pestana.titulo }}
             <span class="tab-count">{{ pestana.cantidad }}</span>
           </button>
+
+          <button
+              type="button"
+              role="tab"
+              class="tab"
+              :class="{ active: pestanaActiva === 'HIST' }"
+              :aria-selected="pestanaActiva === 'HIST'"
+              @click="pestanaActiva = 'HIST'"
+          >
+            <i class="pi pi-history" />
+            Historial de cambios
+          </button>
+        </div>
+
+
+        <!-- HISTORIAL -->
+
+        <div
+            v-if="pestanaActiva === 'HIST'"
+            class="tab-body"
+        >
+          <LineaTiempoCambios
+              :cambios="historial"
+              :cargando="cargandoHistorial"
+          />
         </div>
 
 
         <!-- DEMANDA TÁCTICA -->
 
         <div
-            v-if="pestanaActiva === 'DT' && requerimiento.demandaTactica"
+            v-else-if="pestanaActiva === 'DT' && requerimiento.demandaTactica"
             class="tab-body"
         >
           <dl class="fields-grid">
@@ -720,6 +860,33 @@ function claseFuente(
   border-radius: var(--pi-radius-lg);
   background: var(--pi-surface);
   box-shadow: var(--pi-shadow-sm);
+}
+
+.desarrollo-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--pi-border);
+  border-radius: var(--pi-radius-md);
+  background: var(--pi-surface);
+}
+
+.desarrollo-box.danger { border-color: #fecaca; background: var(--pi-danger-soft); }
+.desarrollo-box.warn { border-color: #fde68a; background: var(--pi-warning-soft); }
+.desarrollo-box.info { border-color: #bfdbfe; background: var(--pi-primary-soft); }
+.desarrollo-box.modificada { border-color: #ddd6fe; background: #f5f3ff; }
+
+.desarrollo-box strong {
+  color: var(--pi-text);
+  font-size: 13px;
+}
+
+.desarrollo-box p {
+  margin: 3px 0 0;
+  color: var(--pi-text-secondary);
+  font-size: 12px;
 }
 
 .tabs {

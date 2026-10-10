@@ -1,6 +1,14 @@
 <script setup lang="ts">
+import CambiosTabla from "../components/auditoria/CambiosTabla.vue";
+import type { FilaCambio } from "../components/auditoria/CambiosTabla.vue";
+import HistorialCargas from "../components/auditoria/HistorialCargas.vue";
+import { listarCargas } from "../services/auditoriaService";
+import type { Carga } from "../services/auditoriaService";
+import { FUENTES as FUENTES_IMPORTACION } from "../config/sourceSchemas";
+
 import {
   computed,
+  onMounted,
   ref
 } from "vue";
 
@@ -373,6 +381,63 @@ function mostrarValor(
 }
 
 
+// =========================================================
+// DETALLE DE LA COMPARACIÓN E HISTORIAL
+// =========================================================
+
+/*
+ * Lo que cambiaría con este archivo, en el mismo formato
+ * que la auditoría de cargas.
+ */
+const filasComparacion = computed<FilaCambio[]>(() => {
+  const resultado = comparacion.value;
+
+  if (!resultado) {
+    return [];
+  }
+
+  const codigo = FUENTES_IMPORTACION[resultado.fuente].codigo;
+
+  const fila = (
+      item: { idDocumento: string; idPrincipal: string; nombre: string; cambios?: FilaCambio["campos"] },
+      tipo: FilaCambio["tipo"]
+  ): FilaCambio => ({
+    id: `${tipo}_${item.idDocumento}`,
+    tipo,
+    codigoFuente: codigo,
+    idDocumento: item.idDocumento,
+    idPrincipal: item.idPrincipal,
+    nombre: item.nombre,
+    campos: item.cambios ?? []
+  });
+
+  return [
+    ...resultado.modificados.map(item => fila(item, "MODIFICADO")),
+    ...(resultado.reactivados ?? []).map(item => fila(item, "REACTIVADO")),
+    ...resultado.nuevos.map(item => fila(item, "NUEVO")),
+    ...resultado.inactivos.map(item => fila(item, "INACTIVADO"))
+  ];
+});
+
+
+const historialCargas = ref<Carga[]>([]);
+const cargandoHistorial = ref(false);
+
+async function cargarHistorial() {
+  cargandoHistorial.value = true;
+
+  try {
+    historialCargas.value = await listarCargas(30);
+  } catch (e) {
+    console.error("Error leyendo el historial de cargas:", e);
+  } finally {
+    cargandoHistorial.value = false;
+  }
+}
+
+onMounted(cargarHistorial);
+
+
 async function prepararComparacion(
     resultado: AnalisisExcel
 ) {
@@ -611,6 +676,8 @@ async function guardarComoBaseline() {
     baselineGuardado.value =
         true;
 
+    cargarHistorial();
+
     mensajeBaseline.value =
         `Base inicial de ${etiquetaFuente.value} creada correctamente. ` +
         `${resultado.guardados} registros guardados.`;
@@ -694,6 +761,8 @@ async function confirmarActualizacion() {
 
     actualizacionAplicada.value =
         true;
+
+    cargarHistorial();
 
     mensajeActualizacion.value =
         `Actualización completada correctamente. ` +
@@ -1804,95 +1873,27 @@ async function confirmarActualizacion() {
 
 
         <div
-            v-if="
-            comparacion.modificados.length > 0
-          "
+            v-if="filasComparacion.length > 0"
             class="changes-preview"
         >
-
           <div class="changes-preview-header">
-
             <div>
               <strong>
-                Modificaciones detectadas
+                Detalle de cambios
               </strong>
-
               <span>
-                Se muestran hasta 8 registros y 3 cambios por registro.
+                Abre un registro para ver el valor anterior y el nuevo de cada campo.
+                <template v-if="comparacion.resumen.reactivados > 0">
+                  {{ comparacion.resumen.reactivados }} registro(s) vuelven a aparecer y se reactivarán.
+                </template>
               </span>
             </div>
-
             <span class="count-badge">
-              {{ comparacion.modificados.length }}
+              {{ filasComparacion.length }}
             </span>
-
           </div>
 
-
-          <div class="changes-list">
-
-            <div
-                v-for="
-                item
-                in comparacion.modificados.slice(0, 8)
-              "
-                :key="item.idDocumento"
-                class="change-row"
-            >
-
-              <div class="change-record">
-
-                <strong>
-                  {{ item.idPrincipal || item.idDocumento }}
-                </strong>
-
-                <span>
-                  {{ item.nombre || "Sin nombre" }}
-                </span>
-
-              </div>
-
-
-              <div class="change-fields">
-
-                <div
-                    v-for="
-                    cambio
-                    in item.cambios.slice(0, 3)
-                  "
-                    :key="cambio.campo"
-                    class="change-chip"
-                >
-
-                  <span class="change-field">
-                    {{ cambio.campo }}
-                  </span>
-
-                  <span class="change-old">
-                    {{ mostrarValor(cambio.anterior) }}
-                  </span>
-
-                  <i class="pi pi-arrow-right" />
-
-                  <span class="change-new">
-                    {{ mostrarValor(cambio.nuevo) }}
-                  </span>
-
-                </div>
-
-                <span
-                    v-if="item.cambios.length > 3"
-                    class="more-changes"
-                >
-                  +{{ item.cambios.length - 3 }} cambios
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
+          <CambiosTabla :filas="filasComparacion" />
         </div>
 
 
@@ -2071,6 +2072,29 @@ async function confirmarActualizacion() {
       </div>
 
     </template>
+
+    <div class="history-panel">
+      <div class="history-header">
+        <div>
+          <span class="section-label">Trazabilidad</span>
+          <h3>Historial de cargas</h3>
+          <p>
+            Últimos archivos cargados de cada fuente. Haz clic en una carga para ver
+            en Auditoría qué registros cambiaron.
+          </p>
+        </div>
+        <RouterLink :to="{ name: 'auditoria' }" class="history-link">
+          Ir a Auditoría <i class="pi pi-arrow-right" />
+        </RouterLink>
+      </div>
+
+      <HistorialCargas
+          :cargas="historialCargas"
+          :cargando="cargandoHistorial"
+          :filas-por-pagina="5"
+          @seleccionar="$router.push({ name: 'auditoria', query: { carga: $event.id } })"
+      />
+    </div>
 
   </section>
 
@@ -4610,4 +4634,40 @@ max-width: 480px
 
 }
 
+
+.history-panel {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--pi-border);
+  border-radius: var(--pi-radius-lg);
+  background: var(--pi-surface);
+  box-shadow: var(--pi-shadow-sm);
+}
+
+.history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.history-header h3 {
+  margin: 2px 0 0;
+  color: var(--pi-text);
+  font-size: 15px;
+}
+
+.history-header p {
+  margin: 4px 0 0;
+  color: var(--pi-text-muted);
+  font-size: 12px;
+}
+
+.history-link {
+  color: var(--pi-primary);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
 </style>

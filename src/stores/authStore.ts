@@ -21,6 +21,7 @@ import {
 import type { PerfilUsuario } from "../services/usuariosService";
 
 import { useRequerimientosStore } from "./requerimientosStore";
+import { useAlertasStore } from "./alertasStore";
 
 
 /*
@@ -96,6 +97,7 @@ export const useAuthStore = defineStore("auth", () => {
 
                     if (cambio) {
                         useRequerimientosStore().limpiar();
+                        useAlertasStore().limpiar();
                     }
 
                     await cargarPerfil();
@@ -134,6 +136,7 @@ export const useAuthStore = defineStore("auth", () => {
         puedeSerAdminInicial.value = false;
 
         useRequerimientosStore().limpiar();
+        useAlertasStore().limpiar();
     }
 
 

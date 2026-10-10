@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { useAuthStore } from "../../stores/authStore";
+import { useAlertasStore } from "../../stores/alertasStore";
 import logoBlanco from "../../assets/logo-blanco.svg";
 
 defineProps<{
@@ -9,6 +10,7 @@ defineProps<{
 }>();
 
 const auth = useAuthStore();
+const alertasStore = useAlertasStore();
 
 const opcionesPrincipal = [
   { nombre: "Dashboard", ruta: "/dashboard", icono: "pi pi-chart-bar" },
@@ -16,6 +18,7 @@ const opcionesPrincipal = [
   { nombre: "Importaciones", ruta: "/importaciones", icono: "pi pi-upload", soloAdmin: true },
   { nombre: "Planificación", ruta: "/planificacion", icono: "pi pi-calendar" },
   { nombre: "Reportes", ruta: "/reportes", icono: "pi pi-chart-line" },
+  { nombre: "Alertas", ruta: "/alertas", icono: "pi pi-bell" },
   { nombre: "Auditoría", ruta: "/auditoria", icono: "pi pi-shield" }
 ];
 
@@ -83,6 +86,14 @@ const menuGestion = computed(() => visibles(opcionesGestion));
             class="nav-text"
         >
           {{ item.nombre }}
+        </span>
+
+        <span
+            v-if="item.ruta === '/alertas' && alertasStore.pendientes.length > 0"
+            class="nav-badge"
+            :title="`${alertasStore.pendientes.length} alertas de desarrollo`"
+        >
+          {{ alertasStore.pendientes.length }}
         </span>
       </RouterLink>
 
@@ -275,6 +286,27 @@ const menuGestion = computed(() => visibles(opcionesGestion));
   font-weight: 520;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.nav-badge {
+  min-width: 18px;
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pi-danger);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sidebar.colapsado .nav-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 14px;
+  padding: 0 4px;
+  font-size: 9px;
 }
 
 .nav-divider {

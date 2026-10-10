@@ -18,6 +18,31 @@ export const useRequerimientosStore = defineStore("requerimientos", () => {
         () => new Map(requerimientos.value.map(item => [item.id, item]))
     );
 
+    /*
+     * Requerimiento al que pertenece cada fila de las
+     * fuentes (DT_3558 → DT:3558), para enlazar desde la
+     * auditoría.
+     */
+    const porDocumento = computed(() => {
+        const mapa = new Map<string, Requerimiento>();
+
+        for (const item of requerimientos.value) {
+            const registros = [
+                item.demandaTactica,
+                ...item.listado,
+                ...item.clearQuest
+            ];
+
+            for (const registro of registros) {
+                if (registro && !mapa.has(registro.idDocumento)) {
+                    mapa.set(registro.idDocumento, item);
+                }
+            }
+        }
+
+        return mapa;
+    });
+
     async function cargar(forzar = false) {
         if (cargando.value || (cargado.value && !forzar)) {
             return;
@@ -57,6 +82,7 @@ export const useRequerimientosStore = defineStore("requerimientos", () => {
         cargado,
         error,
         porId,
+        porDocumento,
         cargar,
         limpiar
     };

@@ -30,6 +30,20 @@ import {
   useRequerimientosStore
 } from "../stores/requerimientosStore";
 
+import {
+  useAlertasStore
+} from "../stores/alertasStore";
+
+import AlertaTag from "../components/alertas/AlertaTag.vue";
+
+import {
+  NIVELES_ALERTA
+} from "../services/alertasService";
+
+import type {
+  NivelAlerta
+} from "../services/alertasService";
+
 import type {
   Requerimiento
 } from "../services/requerimientosService";
@@ -57,6 +71,60 @@ const {
   cargando,
   error
 } = storeToRefs(store);
+
+const alertasStore =
+    useAlertasStore();
+
+
+/*
+ * Filtro por alerta de fin de desarrollo.
+ */
+type FiltroAlerta =
+    NivelAlerta | "MODIFICADA";
+
+const OPCIONES_ALERTA: { valor: FiltroAlerta; nombre: string }[] = [
+  ...(Object.keys(NIVELES_ALERTA) as NivelAlerta[]).map(nivel => ({
+    valor: nivel as FiltroAlerta,
+    nombre: NIVELES_ALERTA[nivel].nombre
+  })),
+  { valor: "MODIFICADA", nombre: "Fecha modificada" }
+];
+
+const filtroAlerta =
+    ref<FiltroAlerta[]>([]);
+
+function cumpleAlerta(
+    item: Requerimiento
+): boolean {
+  if (filtroAlerta.value.length === 0) {
+    return true;
+  }
+
+  const alerta =
+      alertasStore.porRequerimiento.get(item.id);
+
+  if (!alerta) {
+    return false;
+  }
+
+  return (alerta.nivel !== null && filtroAlerta.value.includes(alerta.nivel)) ||
+      (alerta.fechaModificada !== null && filtroAlerta.value.includes("MODIFICADA"));
+}
+
+/*
+ * Para ordenar por alerta: vencidos primero.
+ */
+function ordenAlerta(
+    item: Requerimiento
+): string {
+  const alerta =
+      alertasStore.porRequerimiento.get(item.id);
+
+  if (!alerta) return "9";
+  if (!alerta.nivel) return "5";
+
+  return String(NIVELES_ALERTA[alerta.nivel].orden);
+}
 
 
 const FUENTES_FILTRO: {
@@ -147,6 +215,13 @@ function aplicarFiltrosDeUrl() {
     }
   }
 
+  const alerta =
+      route.query.alerta;
+
+  if (typeof alerta === "string" && OPCIONES_ALERTA.some(opcion => opcion.valor === alerta)) {
+    filtroAlerta.value = [alerta as FiltroAlerta];
+  }
+
   const fuentes =
       String(route.query.fuentes ?? "")
           .split(",")
@@ -163,6 +238,7 @@ function aplicarFiltrosDeUrl() {
 onMounted(() => {
   aplicarFiltrosDeUrl();
   store.cargar();
+  alertasStore.cargar();
 });
 
 
@@ -285,6 +361,7 @@ const cantidadFiltros =
         FILTROS.filter(filtro => filtros.value[filtro.campo].length > 0).length +
         (fuentesSeleccionadas.value.length !== FUENTES_FILTRO.length ? 1 : 0) +
         (soloAlertas.value ? 1 : 0) +
+        (filtroAlerta.value.length > 0 ? 1 : 0) +
         (busqueda.value ? 1 : 0)
     );
 
@@ -294,6 +371,7 @@ function limpiarFiltros() {
   fuentesSeleccionadas.value =
       FUENTES_FILTRO.map(fuente => fuente.codigo);
   filtros.value = filtrosVacios();
+  filtroAlerta.value = [];
   soloAlertas.value = false;
 }
 
@@ -323,6 +401,10 @@ const requerimientosFiltrados =
         }
 
         if (soloAlertas.value && item.alertas.length === 0) {
+          return false;
+        }
+
+        if (!cumpleAlerta(item)) {
           return false;
         }
 
@@ -588,9 +670,23 @@ function exportarCSV() {
             :class="{ active: filtros[filtro.campo].length > 0 }"
         />
 
+        <MultiSelect
+            v-model="filtroAlerta"
+            :options="OPCIONES_ALERTA"
+            option-label="nombre"
+            option-value="valor"
+            placeholder="Alerta de desarrollo"
+            selected-items-label="Alerta ({0})"
+            :max-selected-labels="1"
+            show-clear
+            size="small"
+            class="filter-select"
+            :class="{ active: filtroAlerta.length > 0 }"
+        />
+
         <label class="filter-check">
           <ToggleSwitch v-model="soloAlertas" />
-          Solo con alertas
+          Diferencias entre fuentes
         </label>
 
         <Button
@@ -690,6 +786,22 @@ function exportarCSV() {
             <Skeleton v-if="cargando && !data.id" width="6rem" />
             <span v-else-if="data.idMantenimiento" class="id-value">{{ data.idMantenimiento }}</span>
             <span v-else class="empty-value">—</span>
+          </template>
+        </Column>
+
+        <Column
+            header="Alerta"
+            :sort-field="ordenAlerta"
+            sortable
+            :exportable="false"
+            style="width: 9rem"
+        >
+          <template #body="{ data }">
+            <Skeleton v-if="cargando && !data.id" width="4rem" />
+            <AlertaTag
+                v-else-if="alertasStore.porRequerimiento.get(data.id)"
+                :alerta="alertasStore.porRequerimiento.get(data.id)!"
+            />
           </template>
         </Column>
 
