@@ -53,6 +53,12 @@ export interface Requerimiento {
     gerencia: string;
 
     /*
+     * Recurso que atiende el requerimiento según DT
+     * (Fábrica Ayesa, Recurso BN, Proveedor).
+     */
+    recurso: string;
+
+    /*
      * Año del mantenimiento o, si no tiene,
      * del trámite (2024-M0243 → 2024).
      */
@@ -129,6 +135,7 @@ function crearRequerimiento(
         responsable: "",
         aplicacion: "",
         gerencia: "",
+        recurso: "",
         anio: "",
         fuentes: [],
         demandaTactica: null,
@@ -217,6 +224,9 @@ function completarResumen(
     requerimiento.gerencia =
         texto(dt?.datos.gerencia) ||
         texto(ls?.datos.gerencia_usuaria);
+
+    requerimiento.recurso =
+        texto(dt?.datos.recurso);
 
     requerimiento.anio =
         (requerimiento.idMantenimiento || requerimiento.idTramite)

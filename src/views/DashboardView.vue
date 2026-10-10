@@ -204,6 +204,17 @@ const cargaResponsable =
     );
 
 
+const porRecurso =
+    computed(() =>
+        agrupar(
+            enDT.value,
+            item => item.recurso,
+            "recurso",
+            ["DT"]
+        )
+    );
+
+
 const porGerencia =
     computed(() =>
         agrupar(
@@ -355,6 +366,13 @@ const actividadesCQ =
           titulo="Carga por responsable"
           descripcion="Requerimientos de DT y Listado por responsable o analista."
           :items="cargaResponsable"
+          color="#2563eb"
+      />
+
+      <BarList
+          titulo="Demanda Táctica por recurso"
+          descripcion="Quién atiende cada requerimiento de DT."
+          :items="porRecurso"
           color="#2563eb"
       />
 

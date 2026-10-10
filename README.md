@@ -11,7 +11,8 @@ npm run dev
 ```
 
 La configuración de Firebase va en `.env.local` (no se sube al repo) con las
-variables `VITE_FIREBASE_*`.
+variables `VITE_FIREBASE_*`. La licencia de PrimeUI va en el mismo archivo como
+`VITE_PRIMEUI_LICENSE`; sin ella PrimeVue muestra un aviso de licencia.
 
 ## Accesos
 

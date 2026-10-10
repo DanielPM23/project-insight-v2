@@ -2,8 +2,7 @@
 import {
   computed,
   onMounted,
-  ref,
-  watch
+  ref
 } from "vue";
 
 import {
@@ -14,6 +13,18 @@ import {
 import {
   storeToRefs
 } from "pinia";
+
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import MultiSelect from "primevue/multiselect";
+import SelectButton from "primevue/selectbutton";
+import IconField from "primevue/iconfield";
+import InputIcon from "primevue/inputicon";
+import InputText from "primevue/inputtext";
+import ToggleSwitch from "primevue/toggleswitch";
+import Button from "primevue/button";
+import Tag from "primevue/tag";
+import Skeleton from "primevue/skeleton";
 
 import {
   useRequerimientosStore
@@ -58,8 +69,43 @@ const FUENTES_FILTRO: {
 ];
 
 
-const TAMANO_PAGINA =
-    50;
+/*
+ * Filtros de lista: cada uno admite varios valores.
+ * La clave coincide con el parámetro de la URL que usa
+ * el dashboard (?estado=...).
+ */
+type CampoFiltro =
+    "estado" |
+    "recurso" |
+    "responsable" |
+    "gerencia" |
+    "aplicacion" |
+    "anio";
+
+const FILTROS: {
+  campo: CampoFiltro;
+  nombre: string;
+  orden: "cantidad" | "valor";
+}[] = [
+  { campo: "estado", nombre: "Estado", orden: "cantidad" },
+  { campo: "recurso", nombre: "Recurso", orden: "cantidad" },
+  { campo: "responsable", nombre: "Responsable", orden: "cantidad" },
+  { campo: "gerencia", nombre: "Gerencia", orden: "cantidad" },
+  { campo: "aplicacion", nombre: "Aplicación", orden: "cantidad" },
+  { campo: "anio", nombre: "Año", orden: "valor" }
+];
+
+
+function filtrosVacios(): Record<CampoFiltro, string[]> {
+  return {
+    estado: [],
+    recurso: [],
+    responsable: [],
+    gerencia: [],
+    aplicacion: [],
+    anio: []
+  };
+}
 
 
 const busqueda =
@@ -71,32 +117,20 @@ const busqueda =
  */
 const fuentesSeleccionadas =
     ref<CodigoFuente[]>(
-        FUENTES_FILTRO.map(
-            fuente =>
-                fuente.codigo
-        )
+        FUENTES_FILTRO.map(fuente => fuente.codigo)
     );
 
-const filtroEstado =
-    ref("");
-
-const filtroResponsable =
-    ref("");
-
-const filtroGerencia =
-    ref("");
-
-const filtroAplicacion =
-    ref("");
-
-const filtroAnio =
-    ref("");
+const filtros =
+    ref(filtrosVacios());
 
 const soloAlertas =
     ref(false);
 
-const pagina =
-    ref(1);
+const filasExpandidas =
+    ref<Record<string, boolean>>({});
+
+const tabla =
+    ref<{ exportCSV: () => void } | null>(null);
 
 
 /*
@@ -104,25 +138,17 @@ const pagina =
  * (?estado=...&fuentes=DT,LS).
  */
 function aplicarFiltrosDeUrl() {
-  const valor = (
-      clave: string
-  ): string => {
+  for (const filtro of FILTROS) {
     const dato =
-        route.query[clave];
+        route.query[filtro.campo];
 
-    return typeof dato === "string"
-        ? dato
-        : "";
-  };
-
-  filtroEstado.value = valor("estado");
-  filtroResponsable.value = valor("responsable");
-  filtroGerencia.value = valor("gerencia");
-  filtroAplicacion.value = valor("aplicacion");
-  filtroAnio.value = valor("anio");
+    if (typeof dato === "string" && dato) {
+      filtros.value[filtro.campo] = [dato];
+    }
+  }
 
   const fuentes =
-      valor("fuentes")
+      String(route.query.fuentes ?? "")
           .split(",")
           .filter((codigo): codigo is CodigoFuente =>
               FUENTES_FILTRO.some(fuente => fuente.codigo === codigo)
@@ -148,36 +174,49 @@ function totalFuente(
     codigo: CodigoFuente
 ): number {
   return requerimientos.value
-      .filter(
-          item =>
-              item.fuentes.includes(codigo)
-      )
+      .filter(item => item.fuentes.includes(codigo))
       .length;
 }
 
 
-const total =
-    computed(() => requerimientos.value.length);
-
-const totalDT =
-    computed(() => totalFuente("DT"));
-
-const totalCQ =
-    computed(() => totalFuente("CQ"));
-
-const totalLS =
-    computed(() => totalFuente("LS"));
-
-const totalTres =
-    computed(
-        () =>
-            requerimientos.value
-                .filter(
-                    item =>
-                        item.fuentes.length === 3
-                )
-                .length
-    );
+const metricas =
+    computed(() => [
+      {
+        titulo: "Total",
+        valor: requerimientos.value.length,
+        detalle: "Requerimientos consolidados",
+        icono: "pi pi-database",
+        clase: ""
+      },
+      {
+        titulo: "Demanda Táctica",
+        valor: totalFuente("DT"),
+        detalle: "Presentes en DT",
+        icono: "pi pi-table",
+        clase: "dt"
+      },
+      {
+        titulo: "ClearQuest",
+        valor: totalFuente("CQ"),
+        detalle: "Con actividades en CQ",
+        icono: "pi pi-server",
+        clase: "cq"
+      },
+      {
+        titulo: "Listado",
+        valor: totalFuente("LS"),
+        detalle: "Presentes en Listado",
+        icono: "pi pi-list",
+        clase: "ls"
+      },
+      {
+        titulo: "En las 3 fuentes",
+        valor: requerimientos.value.filter(item => item.fuentes.length === 3).length,
+        detalle: "DT + Listado + ClearQuest",
+        icono: "pi pi-link",
+        clase: "both"
+      }
+    ]);
 
 
 // =========================================================
@@ -186,7 +225,7 @@ const totalTres =
 
 interface OpcionFiltro {
   valor: string;
-  cantidad: number;
+  etiqueta: string;
 }
 
 
@@ -195,15 +234,15 @@ interface OpcionFiltro {
  * requerimientos tienen cada uno.
  */
 function opciones(
-    campo: (item: Requerimiento) => string,
-    orden: "cantidad" | "valor" = "cantidad"
+    campo: CampoFiltro,
+    orden: "cantidad" | "valor"
 ): OpcionFiltro[] {
   const conteo =
       new Map<string, number>();
 
   for (const item of requerimientos.value) {
     const valor =
-        campo(item);
+        item[campo];
 
     if (valor) {
       conteo.set(
@@ -213,60 +252,40 @@ function opciones(
     }
   }
 
-  return Array.from(
-      conteo,
-      ([valor, cantidad]) => ({ valor, cantidad })
-  ).sort((a, b) =>
-      orden === "cantidad"
-          ? b.cantidad - a.cantidad
-          : b.valor.localeCompare(a.valor, "es", { numeric: true })
-  );
+  return Array.from(conteo)
+      .sort((a, b) =>
+          orden === "cantidad"
+              ? b[1] - a[1]
+              : b[0].localeCompare(a[0], "es", { numeric: true })
+      )
+      .map(([valor, cantidad]) => ({
+        valor,
+        etiqueta: `${valor} (${cantidad})`
+      }));
 }
 
 
-const opcionesEstado =
-    computed(() => opciones(item => item.estado));
-
-const opcionesResponsable =
-    computed(() => opciones(item => item.responsable));
-
-const opcionesGerencia =
-    computed(() => opciones(item => item.gerencia));
-
-const opcionesAplicacion =
-    computed(() => opciones(item => item.aplicacion));
-
-const opcionesAnio =
-    computed(() => opciones(item => item.anio, "valor"));
+const opcionesPorFiltro =
+    computed(() =>
+        Object.fromEntries(
+            FILTROS.map(filtro => [
+              filtro.campo,
+              opciones(filtro.campo, filtro.orden)
+            ])
+        ) as Record<CampoFiltro, OpcionFiltro[]>
+    );
 
 
 // =========================================================
 // FILTROS
 // =========================================================
 
-function alternarFuente(
-    codigo: CodigoFuente
-) {
-  const seleccion =
-      fuentesSeleccionadas.value;
-
-  fuentesSeleccionadas.value =
-      seleccion.includes(codigo)
-          ? seleccion.filter(item => item !== codigo)
-          : [...seleccion, codigo];
-}
-
-
-const hayFiltros =
+const cantidadFiltros =
     computed(() =>
-        !!busqueda.value ||
-        fuentesSeleccionadas.value.length !== FUENTES_FILTRO.length ||
-        !!filtroEstado.value ||
-        !!filtroResponsable.value ||
-        !!filtroGerencia.value ||
-        !!filtroAplicacion.value ||
-        !!filtroAnio.value ||
-        soloAlertas.value
+        FILTROS.filter(filtro => filtros.value[filtro.campo].length > 0).length +
+        (fuentesSeleccionadas.value.length !== FUENTES_FILTRO.length ? 1 : 0) +
+        (soloAlertas.value ? 1 : 0) +
+        (busqueda.value ? 1 : 0)
     );
 
 
@@ -274,11 +293,7 @@ function limpiarFiltros() {
   busqueda.value = "";
   fuentesSeleccionadas.value =
       FUENTES_FILTRO.map(fuente => fuente.codigo);
-  filtroEstado.value = "";
-  filtroResponsable.value = "";
-  filtroGerencia.value = "";
-  filtroAplicacion.value = "";
-  filtroAnio.value = "";
+  filtros.value = filtrosVacios();
   soloAlertas.value = false;
 }
 
@@ -293,80 +308,80 @@ const requerimientosFiltrados =
       const seleccion =
           fuentesSeleccionadas.value;
 
-      return requerimientos.value
-          .filter(item => {
-            if (
-                !item.fuentes.some(
-                    fuente =>
-                        seleccion.includes(fuente)
-                )
-            ) {
-              return false;
-            }
+      return requerimientos.value.filter(item => {
+        if (!item.fuentes.some(fuente => seleccion.includes(fuente))) {
+          return false;
+        }
 
-            if (
-                (filtroEstado.value && item.estado !== filtroEstado.value) ||
-                (filtroResponsable.value && item.responsable !== filtroResponsable.value) ||
-                (filtroGerencia.value && item.gerencia !== filtroGerencia.value) ||
-                (filtroAplicacion.value && item.aplicacion !== filtroAplicacion.value) ||
-                (filtroAnio.value && item.anio !== filtroAnio.value) ||
-                (soloAlertas.value && item.alertas.length === 0)
-            ) {
-              return false;
-            }
+        for (const filtro of FILTROS) {
+          const valores =
+              filtros.value[filtro.campo];
 
-            if (!termino) {
-              return true;
-            }
+          if (valores.length > 0 && !valores.includes(item[filtro.campo])) {
+            return false;
+          }
+        }
 
-            const contenido =
-                [
-                  item.idMantenimiento,
-                  item.idTramite,
-                  item.idDemanda,
-                  item.caso,
-                  item.nombre,
-                  item.estado,
-                  item.responsable,
-                  item.aplicacion,
-                  item.gerencia
-                ]
-                    .join(" ")
-                    .toLowerCase();
+        if (soloAlertas.value && item.alertas.length === 0) {
+          return false;
+        }
 
-            return contenido.includes(
-                termino
-            );
-          });
+        if (!termino) {
+          return true;
+        }
+
+        return [
+          item.idMantenimiento,
+          item.idTramite,
+          item.idDemanda,
+          item.caso,
+          item.nombre,
+          item.estado,
+          item.recurso,
+          item.responsable,
+          item.aplicacion,
+          item.gerencia
+        ]
+            .join(" ")
+            .toLowerCase()
+            .includes(termino);
+      });
     });
 
 
 // =========================================================
-// PAGINACIÓN
+// COLUMNAS
 // =========================================================
 
-const totalPaginas =
-    computed(() =>
-        Math.max(
-            1,
-            Math.ceil(requerimientosFiltrados.value.length / TAMANO_PAGINA)
+interface ColumnaTabla {
+  campo: keyof Requerimiento;
+  nombre: string;
+}
+
+const COLUMNAS: ColumnaTabla[] = [
+  { campo: "idTramite", nombre: "ID Trámite" },
+  { campo: "idDemanda", nombre: "ID Demanda / Caso" },
+  { campo: "fuentes", nombre: "Fuentes" },
+  { campo: "estado", nombre: "Estado" },
+  { campo: "recurso", nombre: "Recurso" },
+  { campo: "responsable", nombre: "Responsable / Analista" },
+  { campo: "gerencia", nombre: "Gerencia" },
+  { campo: "aplicacion", nombre: "Aplicación" },
+  { campo: "anio", nombre: "Año" }
+];
+
+const columnasVisibles =
+    ref<ColumnaTabla[]>(
+        COLUMNAS.filter(columna =>
+            !["gerencia", "anio"].includes(columna.campo)
         )
     );
 
-const requerimientosPagina =
-    computed(() =>
-        requerimientosFiltrados.value.slice(
-            (pagina.value - 1) * TAMANO_PAGINA,
-            pagina.value * TAMANO_PAGINA
-        )
-    );
-
-watch(
-    requerimientosFiltrados,
-    () => {
-      pagina.value = 1;
-    }
-);
+function visible(
+    campo: keyof Requerimiento
+): boolean {
+  return columnasVisibles.value.some(columna => columna.campo === campo);
+}
 
 
 // =========================================================
@@ -380,6 +395,42 @@ function claseFuente(
 }
 
 
+type Severidad =
+    "success" | "info" | "warn" | "danger" | "secondary" | "contrast";
+
+/*
+ * Color aproximado del estado según palabras clave,
+ * porque cada Excel usa su propio catálogo.
+ */
+function severidadEstado(
+    estado: string
+): Severidad {
+  const texto =
+      estado.toLowerCase();
+
+  if (/finaliz|producci|cerrad|atendid|culminad|complet/.test(texto)) return "success";
+  if (/descart|rechaz|anulad|cancel/.test(texto)) return "danger";
+  if (/stand|suspend|pospuest|observ|pendiente|espera/.test(texto)) return "warn";
+  if (/desarroll|proceso|iniciad|asignad|prueba|qa|certific|análisis|analisis/.test(texto)) return "info";
+
+  return "secondary";
+}
+
+
+function severidadRecurso(
+    recurso: string
+): Severidad {
+  const texto =
+      recurso.toLowerCase();
+
+  if (texto.includes("fábrica") || texto.includes("fabrica")) return "info";
+  if (texto.includes("bn")) return "success";
+  if (texto.includes("proveedor")) return "warn";
+
+  return "secondary";
+}
+
+
 function abrirDetalle(
     item: Requerimiento
 ) {
@@ -389,6 +440,23 @@ function abrirDetalle(
       id: item.id
     }
   });
+}
+
+
+/*
+ * Al exportar, las listas (fuentes) van como texto.
+ */
+function valorExportado(
+    { data }: { data: unknown }
+): string {
+  return Array.isArray(data)
+      ? data.join(" + ")
+      : String(data ?? "");
+}
+
+
+function exportarCSV() {
+  tabla.value?.exportCSV();
 }
 </script>
 
@@ -414,82 +482,37 @@ function abrirDetalle(
         </p>
       </div>
 
-      <button
-          class="refresh-button"
-          type="button"
-          :disabled="cargando"
+      <Button
+          label="Actualizar"
+          icon="pi pi-refresh"
+          severity="secondary"
+          outlined
+          size="small"
+          :loading="cargando"
           @click="store.cargar(true)"
-      >
-        <i
-            :class="
-            cargando
-              ? 'pi pi-spin pi-spinner'
-              : 'pi pi-refresh'
-          "
-        />
-        Actualizar
-      </button>
+      />
 
     </div>
 
 
     <div class="metrics-grid">
-
-      <div class="metric-card">
-        <div class="metric-icon">
-          <i class="pi pi-database" />
+      <div
+          v-for="metrica in metricas"
+          :key="metrica.titulo"
+          class="metric-card"
+      >
+        <div
+            class="metric-icon"
+            :class="metrica.clase"
+        >
+          <i :class="metrica.icono" />
         </div>
         <div>
-          <span>Total</span>
-          <strong>{{ total }}</strong>
-          <small>Requerimientos consolidados</small>
+          <span>{{ metrica.titulo }}</span>
+          <strong>{{ metrica.valor }}</strong>
+          <small>{{ metrica.detalle }}</small>
         </div>
       </div>
-
-      <div class="metric-card">
-        <div class="metric-icon dt">
-          <i class="pi pi-table" />
-        </div>
-        <div>
-          <span>Demanda Táctica</span>
-          <strong>{{ totalDT }}</strong>
-          <small>Presentes en DT</small>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon cq">
-          <i class="pi pi-server" />
-        </div>
-        <div>
-          <span>ClearQuest</span>
-          <strong>{{ totalCQ }}</strong>
-          <small>Con actividades en CQ</small>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon ls">
-          <i class="pi pi-list" />
-        </div>
-        <div>
-          <span>Listado</span>
-          <strong>{{ totalLS }}</strong>
-          <small>Presentes en Listado</small>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon both">
-          <i class="pi pi-link" />
-        </div>
-        <div>
-          <span>En las 3 fuentes</span>
-          <strong>{{ totalTres }}</strong>
-          <small>DT + Listado + ClearQuest</small>
-        </div>
-      </div>
-
     </div>
 
 
@@ -497,46 +520,49 @@ function abrirDetalle(
 
       <div class="table-toolbar">
 
-        <div class="search-box">
-          <i class="pi pi-search" />
-          <input
+        <IconField class="search-field">
+          <InputIcon class="pi pi-search" />
+          <InputText
               v-model="busqueda"
               type="search"
+              size="small"
               placeholder="Buscar por mantenimiento, trámite, caso, nombre, responsable..."
+              fluid
           />
-        </div>
+        </IconField>
 
-        <div
-            class="source-filter"
-            role="group"
+        <SelectButton
+            v-model="fuentesSeleccionadas"
+            :options="FUENTES_FILTRO"
+            option-label="nombre"
+            option-value="codigo"
+            multiple
+            size="small"
             aria-label="Filtrar por fuente"
-        >
-          <button
-              v-for="fuente in FUENTES_FILTRO"
-              :key="fuente.codigo"
-              type="button"
-              class="source-chip"
-              :class="[
-                claseFuente(fuente.codigo),
-                {
-                  inactive:
-                    !fuentesSeleccionadas.includes(fuente.codigo)
-                }
-              ]"
-              :aria-pressed="fuentesSeleccionadas.includes(fuente.codigo)"
-              @click="alternarFuente(fuente.codigo)"
-          >
-            {{ fuente.nombre }}
-          </button>
-        </div>
+        />
 
-        <div class="results-count">
-          <strong>
-            {{ requerimientosFiltrados.length }}
-          </strong>
-          <span>
-            resultados
-          </span>
+        <div class="toolbar-actions">
+          <MultiSelect
+              v-model="columnasVisibles"
+              :options="COLUMNAS"
+              option-label="nombre"
+              placeholder="Columnas"
+              size="small"
+              :max-selected-labels="0"
+              selected-items-label="Columnas ({0})"
+              class="columns-select"
+          />
+
+          <Button
+              v-tooltip.bottom="'Descargar la tabla filtrada en CSV'"
+              icon="pi pi-download"
+              label="CSV"
+              severity="secondary"
+              outlined
+              size="small"
+              :disabled="requerimientosFiltrados.length === 0"
+              @click="exportarCSV"
+          />
         </div>
 
       </div>
@@ -544,124 +570,49 @@ function abrirDetalle(
 
       <div class="filters-row">
 
-        <select
-            v-model="filtroEstado"
+        <MultiSelect
+            v-for="filtro in FILTROS"
+            :key="filtro.campo"
+            v-model="filtros[filtro.campo]"
+            :options="opcionesPorFiltro[filtro.campo]"
+            option-label="etiqueta"
+            option-value="valor"
+            :placeholder="filtro.nombre"
+            :selected-items-label="`${filtro.nombre} ({0})`"
+            :max-selected-labels="1"
+            filter
+            :filter-placeholder="`Buscar ${filtro.nombre.toLowerCase()}`"
+            show-clear
+            size="small"
             class="filter-select"
-            :class="{ active: filtroEstado }"
-            aria-label="Estado"
-        >
-          <option value="">Todos los estados</option>
-          <option
-              v-for="opcion in opcionesEstado"
-              :key="opcion.valor"
-              :value="opcion.valor"
-          >
-            {{ opcion.valor }} ({{ opcion.cantidad }})
-          </option>
-        </select>
-
-        <select
-            v-model="filtroResponsable"
-            class="filter-select"
-            :class="{ active: filtroResponsable }"
-            aria-label="Responsable"
-        >
-          <option value="">Todos los responsables</option>
-          <option
-              v-for="opcion in opcionesResponsable"
-              :key="opcion.valor"
-              :value="opcion.valor"
-          >
-            {{ opcion.valor }} ({{ opcion.cantidad }})
-          </option>
-        </select>
-
-        <select
-            v-model="filtroGerencia"
-            class="filter-select"
-            :class="{ active: filtroGerencia }"
-            aria-label="Gerencia"
-        >
-          <option value="">Todas las gerencias</option>
-          <option
-              v-for="opcion in opcionesGerencia"
-              :key="opcion.valor"
-              :value="opcion.valor"
-          >
-            {{ opcion.valor }} ({{ opcion.cantidad }})
-          </option>
-        </select>
-
-        <select
-            v-model="filtroAplicacion"
-            class="filter-select"
-            :class="{ active: filtroAplicacion }"
-            aria-label="Aplicación"
-        >
-          <option value="">Todas las aplicaciones</option>
-          <option
-              v-for="opcion in opcionesAplicacion"
-              :key="opcion.valor"
-              :value="opcion.valor"
-          >
-            {{ opcion.valor }} ({{ opcion.cantidad }})
-          </option>
-        </select>
-
-        <select
-            v-model="filtroAnio"
-            class="filter-select"
-            :class="{ active: filtroAnio }"
-            aria-label="Año"
-        >
-          <option value="">Todos los años</option>
-          <option
-              v-for="opcion in opcionesAnio"
-              :key="opcion.valor"
-              :value="opcion.valor"
-          >
-            {{ opcion.valor }} ({{ opcion.cantidad }})
-          </option>
-        </select>
+            :class="{ active: filtros[filtro.campo].length > 0 }"
+        />
 
         <label class="filter-check">
-          <input
-              v-model="soloAlertas"
-              type="checkbox"
-          />
+          <ToggleSwitch v-model="soloAlertas" />
           Solo con alertas
         </label>
 
-        <button
-            v-if="hayFiltros"
-            type="button"
-            class="clear-button"
+        <Button
+            v-if="cantidadFiltros > 0"
+            :label="`Limpiar filtros (${cantidadFiltros})`"
+            icon="pi pi-filter-slash"
+            severity="secondary"
+            text
+            size="small"
             @click="limpiarFiltros"
-        >
-          <i class="pi pi-filter-slash" />
-          Limpiar filtros
-        </button>
+        />
 
-      </div>
-
-
-      <div
-          v-if="cargando"
-          class="state-container"
-      >
-        <div class="state-icon loading">
-          <i class="pi pi-spin pi-spinner" />
+        <div class="results-count">
+          <strong>{{ requerimientosFiltrados.length }}</strong>
+          <span>de {{ requerimientos.length }}</span>
         </div>
-        <strong>
-          Cargando Project Insight...
-        </strong>
-        <span>
-          Consultando los registros en Firestore.
-        </span>
+
       </div>
 
+
       <div
-          v-else-if="error"
+          v-if="error"
           class="state-container"
       >
         <div class="state-icon error">
@@ -675,204 +626,211 @@ function abrirDetalle(
         </span>
       </div>
 
-      <div
-          v-else-if="requerimientos.length === 0"
-          class="state-container"
+      <DataTable
+          v-else
+          ref="tabla"
+          v-model:expanded-rows="filasExpandidas"
+          :value="cargando && requerimientos.length === 0 ? Array(8).fill({}) : requerimientosFiltrados"
+          data-key="id"
+          paginator
+          :rows="25"
+          :rows-per-page-options="[25, 50, 100]"
+          paginator-template="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+          current-page-report-template="{first}–{last} de {totalRecords}"
+          sort-mode="multiple"
+          removable-sort
+          resizable-columns
+          column-resize-mode="fit"
+          reorderable-columns
+          scrollable
+          scroll-height="640px"
+          row-hover
+          striped-rows
+          size="small"
+          export-filename="requerimientos"
+          :export-function="valorExportado"
+          class="requirements-table"
+          :row-class="() => 'clickable-row'"
+          @row-click="!cargando && abrirDetalle($event.data)"
       >
-        <div class="state-icon">
-          <i class="pi pi-upload" />
-        </div>
-        <strong>
-          Todavía no hay registros cargados
-        </strong>
-        <span>
-          Carga los Excels de Demanda Táctica, ClearQuest y Listado
-          desde Importaciones.
-        </span>
-      </div>
 
-      <div
-          v-else-if="requerimientosFiltrados.length === 0"
-          class="state-container"
-      >
-        <div class="state-icon">
-          <i class="pi pi-search" />
-        </div>
-        <strong>
-          No se encontraron requerimientos
-        </strong>
-        <span>
-          Prueba con otro término de búsqueda
-          o cambia los filtros.
-        </span>
-      </div>
+        <template #empty>
+          <div class="state-container">
+            <div class="state-icon">
+              <i :class="requerimientos.length === 0 ? 'pi pi-upload' : 'pi pi-search'" />
+            </div>
+            <strong>
+              {{ requerimientos.length === 0 ? "Todavía no hay registros cargados" : "No se encontraron requerimientos" }}
+            </strong>
+            <span>
+              {{
+                requerimientos.length === 0
+                    ? "Carga los Excels de Demanda Táctica, ClearQuest y Listado desde Importaciones."
+                    : "Prueba con otro término de búsqueda o cambia los filtros."
+              }}
+            </span>
+          </div>
+        </template>
 
-      <template v-else>
+        <Column
+            expander
+            :exportable="false"
+            :reorderable-column="false"
+            style="width: 2.5rem"
+        />
 
-        <div class="table-wrapper">
+        <Column
+            field="idMantenimiento"
+            header="ID Mantenimiento"
+            sortable
+            frozen
+            :reorderable-column="false"
+        >
+          <template #body="{ data }">
+            <Skeleton v-if="cargando && !data.id" width="6rem" />
+            <span v-else-if="data.idMantenimiento" class="id-value">{{ data.idMantenimiento }}</span>
+            <span v-else class="empty-value">—</span>
+          </template>
+        </Column>
 
-          <table>
+        <Column
+            field="nombre"
+            header="Requerimiento"
+            sortable
+            style="min-width: 16rem"
+        >
+          <template #body="{ data }">
+            <Skeleton v-if="cargando && !data.id" />
+            <div v-else class="requirement-cell">
+              <strong :title="data.nombre">
+                {{ data.nombre || "Sin nombre" }}
+                <i
+                    v-if="data.alertas.length > 0"
+                    v-tooltip.top="data.alertas.join('\n')"
+                    class="pi pi-exclamation-triangle alert-icon"
+                />
+              </strong>
+              <small v-if="data.compartenMantenimiento > 0">
+                Comparte mantenimiento con {{ data.compartenMantenimiento }} más
+              </small>
+            </div>
+          </template>
+        </Column>
 
-            <thead>
-            <tr>
-              <th>ID Mantenimiento</th>
-              <th>ID Trámite</th>
-              <th>ID Demanda / Caso</th>
-              <th class="requirement-column">
-                Requerimiento
-              </th>
-              <th>Fuentes</th>
-              <th>Estado</th>
-              <th>Responsable / Analista</th>
-              <th>Aplicación</th>
-            </tr>
-            </thead>
+        <template
+            v-for="columna in COLUMNAS"
+            :key="columna.campo"
+        >
+          <Column
+              v-if="visible(columna.campo)"
+              :field="columna.campo"
+              :header="columna.nombre"
+              :sortable="columna.campo !== 'fuentes'"
+          >
+            <template #body="{ data }">
+              <Skeleton v-if="cargando && !data.id" width="5rem" />
 
-            <tbody>
+              <span
+                  v-else-if="columna.campo === 'fuentes'"
+                  class="source-list"
+              >
+                <span
+                    v-for="fuente in data.fuentes"
+                    :key="fuente"
+                    class="source-badge"
+                    :class="claseFuente(fuente)"
+                >
+                  {{ fuente }}
+                </span>
+              </span>
 
-            <tr
-                v-for="item in requerimientosPagina"
-                :key="item.id"
-                class="clickable-row"
-                tabindex="0"
-                @click="abrirDetalle(item)"
-                @keydown.enter="abrirDetalle(item)"
+              <Tag
+                  v-else-if="columna.campo === 'estado' && data.estado"
+                  :value="data.estado"
+                  :severity="severidadEstado(data.estado)"
+                  class="cell-tag"
+              />
+
+              <Tag
+                  v-else-if="columna.campo === 'recurso' && data.recurso"
+                  :value="data.recurso"
+                  :severity="severidadRecurso(data.recurso)"
+                  class="cell-tag"
+              />
+
+              <span
+                  v-else-if="columna.campo === 'idTramite' && data.idTramite"
+                  class="id-secondary"
+              >
+                {{ data.idTramite }}
+              </span>
+
+              <span
+                  v-else-if="columna.campo === 'idDemanda' && (data.idDemanda || data.caso)"
+                  class="id-secondary"
+              >
+                {{ data.idDemanda || data.caso }}
+              </span>
+
+              <span
+                  v-else-if="!['idTramite', 'idDemanda', 'estado', 'recurso'].includes(columna.campo) && data[columna.campo]"
+              >
+                {{ data[columna.campo] }}
+              </span>
+
+              <span v-else class="empty-value">—</span>
+            </template>
+          </Column>
+        </template>
+
+
+        <template #expansion="{ data }">
+          <div class="expansion">
+
+            <div class="expansion-grid">
+              <div>
+                <span>Demanda Táctica</span>
+                <strong>{{ data.demandaTactica ? (data.idDemanda || "Sí") : "No está" }}</strong>
+              </div>
+              <div>
+                <span>Casos del Listado</span>
+                <strong>{{ data.listado.length ? data.caso : "Ninguno" }}</strong>
+              </div>
+              <div>
+                <span>Actividades ClearQuest</span>
+                <strong>{{ data.clearQuest.length || "Ninguna" }}</strong>
+              </div>
+              <div>
+                <span>Gerencia</span>
+                <strong>{{ data.gerencia || "—" }}</strong>
+              </div>
+            </div>
+
+            <ul
+                v-if="data.alertas.length"
+                class="expansion-alerts"
             >
+              <li
+                  v-for="alerta in data.alertas"
+                  :key="alerta"
+              >
+                <i class="pi pi-exclamation-triangle" />
+                {{ alerta }}
+              </li>
+            </ul>
 
-              <td>
-                <span
-                    v-if="item.idMantenimiento"
-                    class="id-value"
-                >
-                  {{ item.idMantenimiento }}
-                </span>
-                <span
-                    v-else
-                    class="empty-value"
-                >
-                  —
-                </span>
-              </td>
+            <Button
+                label="Ver todos los campos"
+                icon="pi pi-arrow-right"
+                icon-pos="right"
+                size="small"
+                @click.stop="abrirDetalle(data)"
+            />
 
-              <td>
-                <span
-                    v-if="item.idTramite"
-                    class="id-secondary"
-                >
-                  {{ item.idTramite }}
-                </span>
-                <span
-                    v-else
-                    class="empty-value"
-                >
-                  —
-                </span>
-              </td>
+          </div>
+        </template>
 
-              <td>
-                <span
-                    v-if="item.idDemanda || item.caso"
-                    class="id-secondary"
-                >
-                  {{ item.idDemanda || item.caso }}
-                </span>
-                <span
-                    v-else
-                    class="empty-value"
-                >
-                  —
-                </span>
-              </td>
-
-              <td class="requirement-cell">
-                <strong :title="item.nombre">
-                  {{ item.nombre || "Sin nombre" }}
-                  <i
-                      v-if="item.alertas.length > 0"
-                      class="pi pi-exclamation-triangle alert-icon"
-                      :title="item.alertas.join('\n')"
-                  />
-                </strong>
-                <small v-if="item.compartenMantenimiento > 0">
-                  Comparte mantenimiento con
-                  {{ item.compartenMantenimiento }}
-                  requerimiento(s) más
-                </small>
-                <small v-else-if="item.gerencia">
-                  {{ item.gerencia }}
-                </small>
-              </td>
-
-              <td>
-                <span class="source-list">
-                  <span
-                      v-for="fuente in item.fuentes"
-                      :key="fuente"
-                      class="source-badge"
-                      :class="claseFuente(fuente)"
-                  >
-                    {{ fuente }}
-                  </span>
-                </span>
-              </td>
-
-              <td>
-                <span
-                    v-if="item.estado"
-                    class="status-badge"
-                >
-                  {{ item.estado }}
-                </span>
-                <span
-                    v-else
-                    class="empty-value"
-                >
-                  —
-                </span>
-              </td>
-
-              <td>
-                {{ item.responsable || "—" }}
-              </td>
-
-              <td>
-                {{ item.aplicacion || "—" }}
-              </td>
-
-            </tr>
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-
-        <div class="pagination">
-
-          <span>
-            Página {{ pagina }} de {{ totalPaginas }}
-          </span>
-
-          <button
-              type="button"
-              :disabled="pagina <= 1"
-              @click="pagina--"
-          >
-            Anterior
-          </button>
-
-          <button
-              type="button"
-              :disabled="pagina >= totalPaginas"
-              @click="pagina++"
-          >
-            Siguiente
-          </button>
-
-        </div>
-
-      </template>
+      </DataTable>
 
     </div>
 
@@ -881,7 +839,6 @@ function abrirDetalle(
 
 
 <style scoped>
-
 .requirements-page {
   width: 100%;
   padding-bottom: 32px;
@@ -1044,6 +1001,7 @@ function abrirDetalle(
 }
 
 
+
 .table-card {
   overflow: hidden;
   border: 1px solid var(--pi-border);
@@ -1052,76 +1010,30 @@ function abrirDetalle(
   box-shadow: var(--pi-shadow-sm);
 }
 
-
 .table-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--pi-border);
 }
 
-
-.search-box {
-  display: flex;
-  align-items: center;
+.search-field {
   flex: 1;
   min-width: 260px;
-  max-width: 600px;
-  height: 36px;
-  padding: 0 11px;
-  gap: 8px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-sm);
-  background: var(--pi-surface-soft);
+  max-width: 460px;
 }
 
-
-.search-box:focus-within {
-  border-color: #93c5fd;
-  background: #ffffff;
-  box-shadow:
-      0 0 0 3px
-      rgba(37, 99, 235, 0.07);
-}
-
-
-.search-box i {
-  color: var(--pi-text-muted);
-  font-size: 11px;
-}
-
-
-.search-box input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--pi-text-secondary);
-  font-size: 10px;
-}
-
-
-.source-filter {
+.toolbar-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
-.source-chip {
-  height: 30px;
-  padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.source-chip.inactive {
-  border-color: var(--pi-border);
-  background: var(--pi-surface);
-  color: var(--pi-text-muted);
+.columns-select {
+  width: 150px;
 }
 
 .filters-row {
@@ -1129,36 +1041,116 @@ function abrirDetalle(
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--pi-border);
   background: var(--pi-surface-soft);
 }
 
 .filter-select {
-  height: 32px;
-  min-width: 150px;
-  max-width: 220px;
-  padding: 0 8px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-sm);
-  background: var(--pi-surface);
-  color: var(--pi-text-secondary);
-  font-size: 10px;
-  outline: none;
+  width: 150px;
 }
 
 .filter-select.active {
-  border-color: #93c5fd;
-  color: var(--pi-primary);
+  border-color: var(--pi-primary);
 }
 
 .filter-check {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  margin-left: 4px;
   color: var(--pi-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
+}
+
+.results-count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--pi-text-muted);
+  font-size: 11px;
+}
+
+.results-count strong {
+  color: var(--pi-text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.requirements-table :deep(.p-datatable-tbody > tr > td) {
+  font-size: 12px;
+}
+
+.requirements-table :deep(.p-datatable-thead > tr > th) {
+  color: var(--pi-text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.requirements-table :deep(.p-datatable-column-title) {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.requirements-table :deep(.clickable-row) {
+  cursor: pointer;
+}
+
+.requirements-table :deep(.p-datatable-paginator-bottom) {
+  border-top: 1px solid var(--pi-border);
+}
+
+.requirement-cell {
+  display: flex;
+  flex-direction: column;
+  max-width: 360px;
+}
+
+.requirement-cell strong {
+  overflow: hidden;
+  color: var(--pi-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requirement-cell small {
+  margin-top: 2px;
+  color: var(--pi-text-muted);
+  font-size: 10px;
+}
+
+.alert-icon {
+  margin-left: 4px;
+  color: var(--pi-warning);
+  font-size: 11px;
+}
+
+.id-value {
+  color: var(--pi-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.id-secondary {
+  color: var(--pi-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.empty-value {
+  color: var(--pi-text-muted);
+}
+
+.cell-tag {
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .source-list {
@@ -1166,213 +1158,69 @@ function abrirDetalle(
   gap: 4px;
 }
 
-.clickable-row {
-  cursor: pointer;
-}
-
-.alert-icon {
-  margin-left: 4px;
-  color: var(--pi-warning);
-  font-size: 9px;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 10px 16px;
-  color: var(--pi-text-muted);
-  font-size: 9px;
-}
-
-.pagination button {
-  min-height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-sm);
-  background: var(--pi-surface);
-  color: var(--pi-text-secondary);
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-
-.results-count {
-  display: flex;
-  align-items: baseline;
-  margin-left: auto;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-
-.results-count strong {
-  color: var(--pi-text);
-  font-size: 11px;
-}
-
-
-.results-count span {
-  color: var(--pi-text-muted);
-  font-size: 9px;
-}
-
-
-.table-wrapper {
-  width: 100%;
-  max-height: calc(100vh - 330px);
-  overflow: auto;
-}
-
-
-table {
-  width: 100%;
-  min-width: 1180px;
-  border-collapse: collapse;
-}
-
-
-th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--pi-border);
-  background: var(--pi-surface-soft);
-  color: var(--pi-text-muted);
-  text-align: left;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-
-td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #edf2f7;
-  color: var(--pi-text-secondary);
-  font-size: 9px;
-  vertical-align: middle;
-}
-
-
-tbody tr {
-  transition:
-      background
-      var(--pi-transition);
-}
-
-
-tbody tr:hover {
-  background: #fafcff;
-}
-
-
-.requirement-column {
-  min-width: 270px;
-}
-
-
-.requirement-cell {
-  max-width: 360px;
-}
-
-
-.requirement-cell strong {
-  display: block;
-  overflow: hidden;
-  color: var(--pi-text);
-  font-size: 9px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
-.requirement-cell small {
-  display: block;
-  margin-top: 3px;
-  overflow: hidden;
-  color: var(--pi-text-muted);
-  font-size: 8px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
-.id-value {
-  color: var(--pi-primary);
-  font-family:
-      ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Consolas,
-      monospace;
-  font-size: 8px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-
-.id-secondary {
-  color: var(--pi-text-secondary);
-  font-family:
-      ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Consolas,
-      monospace;
-  font-size: 8px;
-  white-space: nowrap;
-}
-
-
-.empty-value {
-  color: #cbd5e1;
-}
-
-
-.source-badge,
-.status-badge {
+.source-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 7px;
+  padding: 3px 7px;
   border-radius: 999px;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 650;
   white-space: nowrap;
 }
-
 
 .source-dt {
   background: #eff6ff;
   color: #2563eb;
 }
 
-
 .source-cq {
   background: #f5f3ff;
   color: #7c3aed;
 }
-
 
 .source-ls {
   background: #fff7ed;
   color: #c2410c;
 }
 
+.expansion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 8px 10px 44px;
+}
 
-.status-badge {
-  background: var(--pi-surface-muted);
-  color: var(--pi-text-secondary);
+.expansion-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, auto));
+  gap: 8px 28px;
+}
+
+.expansion-grid span {
+  display: block;
+  color: var(--pi-text-muted);
+  font-size: 10px;
+}
+
+.expansion-grid strong {
+  color: var(--pi-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.expansion-alerts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.expansion-alerts li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pi-warning);
+  font-size: 11px;
 }
 
 .state-container {
@@ -1380,11 +1228,10 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  min-height: 320px;
+  min-height: 260px;
   padding: 32px;
   text-align: center;
 }
-
 
 .state-icon {
   display: flex;
@@ -1398,76 +1245,51 @@ tbody tr:hover {
   color: var(--pi-text-muted);
 }
 
-
-.state-icon.loading {
-  background: var(--pi-primary-soft);
-  color: var(--pi-primary);
-}
-
-
 .state-icon.error {
   background: var(--pi-danger-soft);
   color: var(--pi-danger);
 }
 
-
 .state-container strong {
   color: var(--pi-text);
-  font-size: 11px;
+  font-size: 12px;
 }
-
 
 .state-container span {
   max-width: 420px;
   margin-top: 4px;
   color: var(--pi-text-muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 
-
 @media (max-width: 1050px) {
-
   .metrics-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-
-  .table-toolbar {
-    flex-wrap: wrap;
-  }
-
-
+  .toolbar-actions,
   .results-count {
     margin-left: 0;
   }
 
+  .expansion-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-
 @media (max-width: 650px) {
-
   .page-intro {
     flex-direction: column;
   }
-
 
   .metrics-grid {
     grid-template-columns: 1fr;
   }
 
-
-  .search-box {
-    min-width: 100%;
-    max-width: none;
-  }
-
-
+  .search-field,
   .filter-select {
-    flex: 1;
+    flex: 1 1 100%;
     max-width: none;
   }
-
 }
-
 </style>

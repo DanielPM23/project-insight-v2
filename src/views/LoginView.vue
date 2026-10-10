@@ -5,6 +5,7 @@ import { storeToRefs } from "pinia";
 
 import { useAuthStore } from "../stores/authStore";
 import { mensajeErrorAuth } from "../services/usuariosService";
+import logoNegro from "../assets/logo-negro.svg";
 
 
 const auth = useAuthStore();
@@ -110,7 +111,11 @@ function salir() {
     <section class="login-card">
 
       <div class="brand">
-        <div class="logo-mark">PI</div>
+        <img
+            class="logo-mark"
+            :src="logoNegro"
+            alt="Project Insight"
+        />
         <div>
           <strong>Project Insight</strong>
           <span>Management Platform</span>
@@ -299,16 +304,9 @@ function salir() {
 }
 
 .logo-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
+  width: 34px;
+  height: 40px;
+  object-fit: contain;
 }
 
 h1 {

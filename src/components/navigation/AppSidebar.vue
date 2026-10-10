@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { useAuthStore } from "../../stores/authStore";
+import logoBlanco from "../../assets/logo-blanco.svg";
 
 defineProps<{
   colapsado: boolean;
@@ -42,7 +43,11 @@ const menuGestion = computed(() => visibles(opcionesGestion));
   >
 
     <div class="sidebar-logo">
-      <div class="logo-mark">PI</div>
+      <img
+          class="logo-mark"
+          :src="logoBlanco"
+          alt="Project Insight"
+      />
 
       <div
           v-if="!colapsado"
@@ -164,24 +169,10 @@ const menuGestion = computed(() => visibles(opcionesGestion));
 }
 
 .logo-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
   flex-shrink: 0;
-
   width: 36px;
-  height: 36px;
-
-  border-radius: 10px;
-
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  color: #ffffff;
-
-  font-size: 12px;
-  font-weight: 800;
-
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.24);
+  height: 40px;
+  object-fit: contain;
 }
 
 .logo-copy {
