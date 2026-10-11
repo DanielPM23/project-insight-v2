@@ -59,6 +59,12 @@ export interface Requerimiento {
     recurso: string;
 
     /*
+     * Categoría del requerimiento (Evolutivo, Correctivo,
+     * Normativo...), de DT o, si no tiene, del Listado.
+     */
+    categoria: string;
+
+    /*
      * Año del mantenimiento o, si no tiene,
      * del trámite (2024-M0243 → 2024).
      */
@@ -101,6 +107,32 @@ function texto(
 }
 
 
+/*
+ * La categoría está en el esquema del Listado y como columna
+ * adicional en DT. Algunas filas traen "0" como vacío.
+ */
+function categoria(
+    registro: RegistroFuente | null | undefined
+): string {
+    if (!registro) {
+        return "";
+    }
+
+    const valor =
+        texto(
+            registro.datos.categoria ??
+            registro.extra["Categoría"] ??
+            registro.extra["Categoria"]
+        );
+
+    if (!valor || valor === "0") {
+        return "";
+    }
+
+    return valor.charAt(0).toUpperCase() + valor.slice(1);
+}
+
+
 function agregarAIndice<T>(
     indice: Map<string, T[]>,
     clave: string | null,
@@ -136,6 +168,7 @@ function crearRequerimiento(
         aplicacion: "",
         gerencia: "",
         recurso: "",
+        categoria: "",
         anio: "",
         fuentes: [],
         demandaTactica: null,
@@ -227,6 +260,10 @@ function completarResumen(
 
     requerimiento.recurso =
         texto(dt?.datos.recurso);
+
+    requerimiento.categoria =
+        categoria(dt) ||
+        categoria(ls);
 
     requerimiento.anio =
         (requerimiento.idMantenimiento || requerimiento.idTramite)

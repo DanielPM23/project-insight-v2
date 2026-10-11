@@ -2,7 +2,8 @@
 import {
   computed,
   onMounted,
-  ref
+  ref,
+  watch
 } from "vue";
 
 import {
@@ -21,7 +22,6 @@ import SelectButton from "primevue/selectbutton";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
-import ToggleSwitch from "primevue/toggleswitch";
 import Button from "primevue/button";
 import Tag from "primevue/tag";
 import Skeleton from "primevue/skeleton";
@@ -77,17 +77,19 @@ const alertasStore =
 
 
 /*
- * Filtro por alerta de fin de desarrollo.
+ * Filtro por alerta: de fin de desarrollo o diferencias
+ * entre fuentes. Los valores elegidos se suman (O).
  */
 type FiltroAlerta =
-    NivelAlerta | "MODIFICADA";
+    NivelAlerta | "MODIFICADA" | "DIFERENCIAS";
 
 const OPCIONES_ALERTA: { valor: FiltroAlerta; nombre: string }[] = [
   ...(Object.keys(NIVELES_ALERTA) as NivelAlerta[]).map(nivel => ({
     valor: nivel as FiltroAlerta,
     nombre: NIVELES_ALERTA[nivel].nombre
   })),
-  { valor: "MODIFICADA", nombre: "Fecha modificada" }
+  { valor: "MODIFICADA", nombre: "Fecha modificada" },
+  { valor: "DIFERENCIAS", nombre: "Diferencias entre fuentes" }
 ];
 
 const filtroAlerta =
@@ -97,6 +99,10 @@ function cumpleAlerta(
     item: Requerimiento
 ): boolean {
   if (filtroAlerta.value.length === 0) {
+    return true;
+  }
+
+  if (filtroAlerta.value.includes("DIFERENCIAS") && item.alertas.length > 0) {
     return true;
   }
 
@@ -144,6 +150,7 @@ const FUENTES_FILTRO: {
  */
 type CampoFiltro =
     "estado" |
+    "categoria" |
     "recurso" |
     "responsable" |
     "gerencia" |
@@ -156,6 +163,7 @@ const FILTROS: {
   orden: "cantidad" | "valor";
 }[] = [
   { campo: "estado", nombre: "Estado", orden: "cantidad" },
+  { campo: "categoria", nombre: "Categoría", orden: "cantidad" },
   { campo: "recurso", nombre: "Recurso", orden: "cantidad" },
   { campo: "responsable", nombre: "Responsable", orden: "cantidad" },
   { campo: "gerencia", nombre: "Gerencia", orden: "cantidad" },
@@ -167,6 +175,7 @@ const FILTROS: {
 function filtrosVacios(): Record<CampoFiltro, string[]> {
   return {
     estado: [],
+    categoria: [],
     recurso: [],
     responsable: [],
     gerencia: [],
@@ -190,9 +199,6 @@ const fuentesSeleccionadas =
 
 const filtros =
     ref(filtrosVacios());
-
-const soloAlertas =
-    ref(false);
 
 const filasExpandidas =
     ref<Record<string, boolean>>({});
@@ -243,56 +249,21 @@ onMounted(() => {
 
 
 // =========================================================
-// MÉTRICAS
+// FUENTES
 // =========================================================
 
-function totalFuente(
-    codigo: CodigoFuente
-): number {
-  return requerimientos.value
-      .filter(item => item.fuentes.includes(codigo))
-      .length;
-}
-
-
-const metricas =
-    computed(() => [
-      {
-        titulo: "Total",
-        valor: requerimientos.value.length,
-        detalle: "Requerimientos consolidados",
-        icono: "pi pi-database",
-        clase: ""
-      },
-      {
-        titulo: "Demanda Táctica",
-        valor: totalFuente("DT"),
-        detalle: "Presentes en DT",
-        icono: "pi pi-table",
-        clase: "dt"
-      },
-      {
-        titulo: "ClearQuest",
-        valor: totalFuente("CQ"),
-        detalle: "Con actividades en CQ",
-        icono: "pi pi-server",
-        clase: "cq"
-      },
-      {
-        titulo: "Listado",
-        valor: totalFuente("LS"),
-        detalle: "Presentes en Listado",
-        icono: "pi pi-list",
-        clase: "ls"
-      },
-      {
-        titulo: "En las 3 fuentes",
-        valor: requerimientos.value.filter(item => item.fuentes.length === 3).length,
-        detalle: "DT + Listado + ClearQuest",
-        icono: "pi pi-link",
-        clase: "both"
-      }
-    ]);
+/*
+ * Botones de fuente con cuántos requerimientos hay en cada una.
+ */
+const opcionesFuente =
+    computed(() =>
+        FUENTES_FILTRO.map(fuente => ({
+          codigo: fuente.codigo,
+          nombre: `${fuente.nombre} ${requerimientos.value
+              .filter(item => item.fuentes.includes(fuente.codigo))
+              .length}`
+        }))
+    );
 
 
 // =========================================================
@@ -360,7 +331,6 @@ const cantidadFiltros =
     computed(() =>
         FILTROS.filter(filtro => filtros.value[filtro.campo].length > 0).length +
         (fuentesSeleccionadas.value.length !== FUENTES_FILTRO.length ? 1 : 0) +
-        (soloAlertas.value ? 1 : 0) +
         (filtroAlerta.value.length > 0 ? 1 : 0) +
         (busqueda.value ? 1 : 0)
     );
@@ -372,7 +342,6 @@ function limpiarFiltros() {
       FUENTES_FILTRO.map(fuente => fuente.codigo);
   filtros.value = filtrosVacios();
   filtroAlerta.value = [];
-  soloAlertas.value = false;
 }
 
 
@@ -400,10 +369,6 @@ const requerimientosFiltrados =
           }
         }
 
-        if (soloAlertas.value && item.alertas.length === 0) {
-          return false;
-        }
-
         if (!cumpleAlerta(item)) {
           return false;
         }
@@ -420,6 +385,7 @@ const requerimientosFiltrados =
           item.nombre,
           item.estado,
           item.recurso,
+          item.categoria,
           item.responsable,
           item.aplicacion,
           item.gerencia
@@ -438,31 +404,101 @@ const requerimientosFiltrados =
 interface ColumnaTabla {
   campo: keyof Requerimiento;
   nombre: string;
+  ancho: string;
 }
 
+/*
+ * Columnas opcionales, a la derecha de las fijas (ID Mantenimiento
+ * y Requerimiento). El ancho es fijo para que la tabla no salte
+ * al cambiar de página o de filtro.
+ */
 const COLUMNAS: ColumnaTabla[] = [
-  { campo: "idTramite", nombre: "ID Trámite" },
-  { campo: "idDemanda", nombre: "ID Demanda / Caso" },
-  { campo: "fuentes", nombre: "Fuentes" },
-  { campo: "estado", nombre: "Estado" },
-  { campo: "recurso", nombre: "Recurso" },
-  { campo: "responsable", nombre: "Responsable / Analista" },
-  { campo: "gerencia", nombre: "Gerencia" },
-  { campo: "aplicacion", nombre: "Aplicación" },
-  { campo: "anio", nombre: "Año" }
+  { campo: "idDemanda", nombre: "ID Demanda / Caso", ancho: "8.5rem" },
+  { campo: "fuentes", nombre: "Fuentes", ancho: "8rem" },
+  { campo: "estado", nombre: "Estado", ancho: "13rem" },
+  { campo: "categoria", nombre: "Categoría", ancho: "8.5rem" },
+  { campo: "recurso", nombre: "Recurso", ancho: "9rem" },
+  { campo: "responsable", nombre: "Responsable / Analista", ancho: "12rem" },
+  { campo: "aplicacion", nombre: "Aplicación", ancho: "12rem" },
+  { campo: "idTramite", nombre: "ID Trámite", ancho: "8rem" },
+  { campo: "gerencia", nombre: "Gerencia", ancho: "13rem" },
+  { campo: "anio", nombre: "Año", ancho: "5rem" }
 ];
+
+const OCULTAS_POR_DEFECTO =
+    ["idTramite", "gerencia", "anio"];
+
+
+/*
+ * Preferencias de la tabla guardadas en el navegador
+ * (columnas visibles y filas por página).
+ */
+const CLAVE_PREFERENCIAS =
+    "pi.requerimientos.tabla";
+
+interface PreferenciasTabla {
+  columnas: string[];
+  filas: number;
+}
+
+function leerPreferencias(): Partial<PreferenciasTabla> {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_PREFERENCIAS) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+const preferencias =
+    leerPreferencias();
 
 const columnasVisibles =
     ref<ColumnaTabla[]>(
         COLUMNAS.filter(columna =>
-            !["gerencia", "anio"].includes(columna.campo)
+            preferencias.columnas
+                ? preferencias.columnas.includes(columna.campo)
+                : !OCULTAS_POR_DEFECTO.includes(columna.campo)
         )
     );
 
-function visible(
-    campo: keyof Requerimiento
-): boolean {
-  return columnasVisibles.value.some(columna => columna.campo === campo);
+const filasPorPagina =
+    ref(preferencias.filas ?? 50);
+
+watch(
+    [columnasVisibles, filasPorPagina],
+    () => {
+      try {
+        localStorage.setItem(
+            CLAVE_PREFERENCIAS,
+            JSON.stringify({
+              columnas: columnasVisibles.value.map(columna => columna.campo),
+              filas: filasPorPagina.value
+            } satisfies PreferenciasTabla)
+        );
+      } catch {
+        // Sin almacenamiento disponible: se usan los valores por defecto.
+      }
+    }
+);
+
+/*
+ * Se respetan el orden de COLUMNAS aunque se elijan en otro orden.
+ */
+const columnasMostradas =
+    computed(() =>
+        COLUMNAS.filter(columna =>
+            columnasVisibles.value.some(visible => visible.campo === columna.campo)
+        )
+    );
+
+function anchoColumna(
+    ancho: string
+): Record<string, string> {
+  return {
+    width: ancho,
+    minWidth: ancho,
+    maxWidth: ancho
+  };
 }
 
 
@@ -494,6 +530,21 @@ function severidadEstado(
   if (/descart|rechaz|anulad|cancel/.test(texto)) return "danger";
   if (/stand|suspend|pospuest|observ|pendiente|espera/.test(texto)) return "warn";
   if (/desarroll|proceso|iniciad|asignad|prueba|qa|certific|análisis|analisis/.test(texto)) return "info";
+
+  return "secondary";
+}
+
+
+function severidadCategoria(
+    categoria: string
+): Severidad {
+  const texto =
+      categoria.toLowerCase();
+
+  if (texto.startsWith("correc")) return "danger";
+  if (texto.startsWith("normativ") || texto.startsWith("mandator")) return "warn";
+  if (texto.startsWith("evolutiv")) return "info";
+  if (texto.startsWith("adaptativ")) return "success";
 
   return "secondary";
 }
@@ -546,24 +597,7 @@ function exportarCSV() {
 <template>
   <section class="requirements-page">
 
-    <div class="page-intro">
-
-      <div>
-        <div class="eyebrow">
-          <i class="pi pi-list" />
-          Gestión de requerimientos
-        </div>
-
-        <h2>
-          Requerimientos
-        </h2>
-
-        <p>
-          Vista consolidada de Demanda Táctica, ClearQuest y Listado.
-          Selecciona un requerimiento para ver todos sus campos.
-        </p>
-      </div>
-
+    <Teleport defer to="#topbar-acciones">
       <Button
           label="Actualizar"
           icon="pi pi-refresh"
@@ -573,33 +607,12 @@ function exportarCSV() {
           :loading="cargando"
           @click="store.cargar(true)"
       />
-
-    </div>
-
-
-    <div class="metrics-grid">
-      <div
-          v-for="metrica in metricas"
-          :key="metrica.titulo"
-          class="metric-card"
-      >
-        <div
-            class="metric-icon"
-            :class="metrica.clase"
-        >
-          <i :class="metrica.icono" />
-        </div>
-        <div>
-          <span>{{ metrica.titulo }}</span>
-          <strong>{{ metrica.valor }}</strong>
-          <small>{{ metrica.detalle }}</small>
-        </div>
-      </div>
-    </div>
+    </Teleport>
 
 
     <div class="table-card">
 
+      <!-- Búsqueda, fuentes y acciones de la tabla: no se desplazan. -->
       <div class="table-toolbar">
 
         <IconField class="search-field">
@@ -608,22 +621,32 @@ function exportarCSV() {
               v-model="busqueda"
               type="search"
               size="small"
-              placeholder="Buscar por mantenimiento, trámite, caso, nombre, responsable..."
+              placeholder="Buscar por ID, nombre, responsable, aplicación..."
+              aria-label="Buscar requerimientos"
               fluid
           />
         </IconField>
 
         <SelectButton
             v-model="fuentesSeleccionadas"
-            :options="FUENTES_FILTRO"
+            :options="opcionesFuente"
             option-label="nombre"
             option-value="codigo"
             multiple
             size="small"
+            class="sources-select"
             aria-label="Filtrar por fuente"
         />
 
         <div class="toolbar-actions">
+          <div
+              class="results-count"
+              aria-live="polite"
+          >
+            <strong>{{ requerimientosFiltrados.length }}</strong>
+            <span>de {{ requerimientos.length }} requerimientos</span>
+          </div>
+
           <MultiSelect
               v-model="columnasVisibles"
               :options="COLUMNAS"
@@ -633,6 +656,7 @@ function exportarCSV() {
               :max-selected-labels="0"
               selected-items-label="Columnas ({0})"
               class="columns-select"
+              aria-label="Columnas visibles"
           />
 
           <Button
@@ -650,6 +674,7 @@ function exportarCSV() {
       </div>
 
 
+      <!-- Filtros combinables: se aplican todos a la vez. -->
       <div class="filters-row">
 
         <MultiSelect
@@ -668,6 +693,7 @@ function exportarCSV() {
             size="small"
             class="filter-select"
             :class="{ active: filtros[filtro.campo].length > 0 }"
+            :aria-label="`Filtrar por ${filtro.nombre.toLowerCase()}`"
         />
 
         <MultiSelect
@@ -675,34 +701,26 @@ function exportarCSV() {
             :options="OPCIONES_ALERTA"
             option-label="nombre"
             option-value="valor"
-            placeholder="Alerta de desarrollo"
+            placeholder="Alerta"
             selected-items-label="Alerta ({0})"
             :max-selected-labels="1"
             show-clear
             size="small"
             class="filter-select"
             :class="{ active: filtroAlerta.length > 0 }"
+            aria-label="Filtrar por alerta de desarrollo"
         />
 
-        <label class="filter-check">
-          <ToggleSwitch v-model="soloAlertas" />
-          Diferencias entre fuentes
-        </label>
-
         <Button
-            v-if="cantidadFiltros > 0"
-            :label="`Limpiar filtros (${cantidadFiltros})`"
+            :label="cantidadFiltros > 0 ? `Limpiar filtros (${cantidadFiltros})` : 'Limpiar filtros'"
             icon="pi pi-filter-slash"
             severity="secondary"
             text
             size="small"
+            class="clear-filters"
+            :disabled="cantidadFiltros === 0"
             @click="limpiarFiltros"
         />
-
-        <div class="results-count">
-          <strong>{{ requerimientosFiltrados.length }}</strong>
-          <span>de {{ requerimientos.length }}</span>
-        </div>
 
       </div>
 
@@ -722,122 +740,127 @@ function exportarCSV() {
         </span>
       </div>
 
-      <DataTable
+      <!--
+        Solo esta zona hace scroll (vertical y horizontal). La cabecera
+        de la tabla y las columnas de identificación quedan fijas.
+      -->
+      <div
           v-else
-          ref="tabla"
-          v-model:expanded-rows="filasExpandidas"
-          :value="cargando && requerimientos.length === 0 ? Array(8).fill({}) : requerimientosFiltrados"
-          data-key="id"
-          paginator
-          :rows="25"
-          :rows-per-page-options="[25, 50, 100]"
-          paginator-template="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
-          current-page-report-template="{first}–{last} de {totalRecords}"
-          sort-mode="multiple"
-          removable-sort
-          resizable-columns
-          column-resize-mode="fit"
-          reorderable-columns
-          scrollable
-          scroll-height="640px"
-          row-hover
-          striped-rows
-          size="small"
-          export-filename="requerimientos"
-          :export-function="valorExportado"
-          class="requirements-table"
-          :row-class="() => 'clickable-row'"
-          @row-click="!cargando && abrirDetalle($event.data)"
+          class="table-body"
       >
+        <DataTable
+            ref="tabla"
+            v-model:expanded-rows="filasExpandidas"
+            v-model:rows="filasPorPagina"
+            :value="cargando && requerimientos.length === 0 ? Array(12).fill({}) : requerimientosFiltrados"
+            data-key="id"
+            paginator
+            :rows-per-page-options="[25, 50, 100, 200]"
+            paginator-template="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+            current-page-report-template="{first}–{last} de {totalRecords}"
+            sort-mode="multiple"
+            removable-sort
+            resizable-columns
+            column-resize-mode="expand"
+            scrollable
+            scroll-height="flex"
+            row-hover
+            striped-rows
+            size="small"
+            export-filename="requerimientos"
+            :export-function="valorExportado"
+            class="requirements-table"
+            :row-class="() => 'clickable-row'"
+            @row-click="!cargando && abrirDetalle($event.data)"
+        >
 
-        <template #empty>
-          <div class="state-container">
-            <div class="state-icon">
-              <i :class="requerimientos.length === 0 ? 'pi pi-upload' : 'pi pi-search'" />
+          <template #empty>
+            <div class="state-container">
+              <div class="state-icon">
+                <i :class="requerimientos.length === 0 ? 'pi pi-upload' : 'pi pi-search'" />
+              </div>
+              <strong>
+                {{ requerimientos.length === 0 ? "Todavía no hay registros cargados" : "No se encontraron requerimientos" }}
+              </strong>
+              <span>
+                {{
+                  requerimientos.length === 0
+                      ? "Carga los Excels de Demanda Táctica, ClearQuest y Listado desde Importaciones."
+                      : "Prueba con otro término de búsqueda o limpia los filtros."
+                }}
+              </span>
             </div>
-            <strong>
-              {{ requerimientos.length === 0 ? "Todavía no hay registros cargados" : "No se encontraron requerimientos" }}
-            </strong>
-            <span>
-              {{
-                requerimientos.length === 0
-                    ? "Carga los Excels de Demanda Táctica, ClearQuest y Listado desde Importaciones."
-                    : "Prueba con otro término de búsqueda o cambia los filtros."
-              }}
-            </span>
-          </div>
-        </template>
-
-        <Column
-            expander
-            :exportable="false"
-            :reorderable-column="false"
-            style="width: 2.5rem"
-        />
-
-        <Column
-            field="idMantenimiento"
-            header="ID Mantenimiento"
-            sortable
-            frozen
-            :reorderable-column="false"
-        >
-          <template #body="{ data }">
-            <Skeleton v-if="cargando && !data.id" width="6rem" />
-            <span v-else-if="data.idMantenimiento" class="id-value">{{ data.idMantenimiento }}</span>
-            <span v-else class="empty-value">—</span>
           </template>
-        </Column>
 
-        <Column
-            header="Alerta"
-            :sort-field="ordenAlerta"
-            sortable
-            :exportable="false"
-            style="width: 9rem"
-        >
-          <template #body="{ data }">
-            <Skeleton v-if="cargando && !data.id" width="4rem" />
-            <AlertaTag
-                v-else-if="alertasStore.porRequerimiento.get(data.id)"
-                :alerta="alertasStore.porRequerimiento.get(data.id)!"
-            />
-          </template>
-        </Column>
+          <Column
+              expander
+              frozen
+              :exportable="false"
+              :style="anchoColumna('2.5rem')"
+          />
 
-        <Column
-            field="nombre"
-            header="Requerimiento"
-            sortable
-            style="min-width: 16rem"
-        >
-          <template #body="{ data }">
-            <Skeleton v-if="cargando && !data.id" />
-            <div v-else class="requirement-cell">
-              <strong :title="data.nombre">
-                {{ data.nombre || "Sin nombre" }}
+          <Column
+              field="idMantenimiento"
+              header="ID Mantenimiento"
+              sortable
+              frozen
+              :style="anchoColumna('8.5rem')"
+          >
+            <template #body="{ data }">
+              <Skeleton v-if="cargando && !data.id" width="6rem" />
+              <span v-else-if="data.idMantenimiento" class="id-value">{{ data.idMantenimiento }}</span>
+              <span v-else class="empty-value">—</span>
+            </template>
+          </Column>
+
+          <Column
+              field="nombre"
+              header="Requerimiento"
+              sortable
+              frozen
+              header-class="frozen-edge"
+              body-class="frozen-edge"
+              :style="anchoColumna('22rem')"
+          >
+            <template #body="{ data }">
+              <Skeleton v-if="cargando && !data.id" />
+              <div v-else class="requirement-cell">
+                <strong :title="data.nombre">
+                  {{ data.nombre || "Sin nombre" }}
+                </strong>
                 <i
                     v-if="data.alertas.length > 0"
                     v-tooltip.top="data.alertas.join('\n')"
                     class="pi pi-exclamation-triangle alert-icon"
+                    aria-label="Diferencias entre fuentes"
                 />
-              </strong>
-              <small v-if="data.compartenMantenimiento > 0">
-                Comparte mantenimiento con {{ data.compartenMantenimiento }} más
-              </small>
-            </div>
-          </template>
-        </Column>
+              </div>
+            </template>
+          </Column>
 
-        <template
-            v-for="columna in COLUMNAS"
-            :key="columna.campo"
-        >
           <Column
-              v-if="visible(columna.campo)"
+              header="Alerta"
+              :sort-field="ordenAlerta"
+              sortable
+              :exportable="false"
+              :style="anchoColumna('8.5rem')"
+          >
+            <template #body="{ data }">
+              <Skeleton v-if="cargando && !data.id" width="4rem" />
+              <AlertaTag
+                  v-else-if="alertasStore.porRequerimiento.get(data.id)"
+                  :alerta="alertasStore.porRequerimiento.get(data.id)!"
+              />
+            </template>
+          </Column>
+
+          <Column
+              v-for="columna in columnasMostradas"
+              :key="columna.campo"
               :field="columna.campo"
               :header="columna.nombre"
               :sortable="columna.campo !== 'fuentes'"
+              :style="anchoColumna(columna.ancho)"
           >
             <template #body="{ data }">
               <Skeleton v-if="cargando && !data.id" width="5rem" />
@@ -858,8 +881,16 @@ function exportarCSV() {
 
               <Tag
                   v-else-if="columna.campo === 'estado' && data.estado"
+                  v-tooltip.top="data.estado"
                   :value="data.estado"
                   :severity="severidadEstado(data.estado)"
+                  class="cell-tag"
+              />
+
+              <Tag
+                  v-else-if="columna.campo === 'categoria' && data.categoria"
+                  :value="data.categoria"
+                  :severity="severidadCategoria(data.categoria)"
                   class="cell-tag"
               />
 
@@ -885,7 +916,9 @@ function exportarCSV() {
               </span>
 
               <span
-                  v-else-if="!['idTramite', 'idDemanda', 'estado', 'recurso'].includes(columna.campo) && data[columna.campo]"
+                  v-else-if="!['idTramite', 'idDemanda', 'estado', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
+                  class="cell-text"
+                  :title="String(data[columna.campo])"
               >
                 {{ data[columna.campo] }}
               </span>
@@ -893,56 +926,60 @@ function exportarCSV() {
               <span v-else class="empty-value">—</span>
             </template>
           </Column>
-        </template>
 
 
-        <template #expansion="{ data }">
-          <div class="expansion">
+          <template #expansion="{ data }">
+            <div class="expansion">
 
-            <div class="expansion-grid">
-              <div>
-                <span>Demanda Táctica</span>
-                <strong>{{ data.demandaTactica ? (data.idDemanda || "Sí") : "No está" }}</strong>
+              <div class="expansion-grid">
+                <div>
+                  <span>Demanda Táctica</span>
+                  <strong>{{ data.demandaTactica ? (data.idDemanda || "Sí") : "No está" }}</strong>
+                </div>
+                <div>
+                  <span>Casos del Listado</span>
+                  <strong>{{ data.listado.length ? data.caso : "Ninguno" }}</strong>
+                </div>
+                <div>
+                  <span>Actividades ClearQuest</span>
+                  <strong>{{ data.clearQuest.length || "Ninguna" }}</strong>
+                </div>
+                <div>
+                  <span>Gerencia</span>
+                  <strong>{{ data.gerencia || "—" }}</strong>
+                </div>
+                <div v-if="data.compartenMantenimiento > 0">
+                  <span>Mismo mantenimiento</span>
+                  <strong>{{ data.compartenMantenimiento }} requerimientos más</strong>
+                </div>
               </div>
-              <div>
-                <span>Casos del Listado</span>
-                <strong>{{ data.listado.length ? data.caso : "Ninguno" }}</strong>
-              </div>
-              <div>
-                <span>Actividades ClearQuest</span>
-                <strong>{{ data.clearQuest.length || "Ninguna" }}</strong>
-              </div>
-              <div>
-                <span>Gerencia</span>
-                <strong>{{ data.gerencia || "—" }}</strong>
-              </div>
-            </div>
 
-            <ul
-                v-if="data.alertas.length"
-                class="expansion-alerts"
-            >
-              <li
-                  v-for="alerta in data.alertas"
-                  :key="alerta"
+              <ul
+                  v-if="data.alertas.length"
+                  class="expansion-alerts"
               >
-                <i class="pi pi-exclamation-triangle" />
-                {{ alerta }}
-              </li>
-            </ul>
+                <li
+                    v-for="alerta in data.alertas"
+                    :key="alerta"
+                >
+                  <i class="pi pi-exclamation-triangle" />
+                  {{ alerta }}
+                </li>
+              </ul>
 
-            <Button
-                label="Ver todos los campos"
-                icon="pi pi-arrow-right"
-                icon-pos="right"
-                size="small"
-                @click.stop="abrirDetalle(data)"
-            />
+              <Button
+                  label="Ver todos los campos"
+                  icon="pi pi-arrow-right"
+                  icon-pos="right"
+                  size="small"
+                  @click.stop="abrirDetalle(data)"
+              />
 
-          </div>
-        </template>
+            </div>
+          </template>
 
-      </DataTable>
+        </DataTable>
+      </div>
 
     </div>
 
@@ -951,170 +988,22 @@ function exportarCSV() {
 
 
 <style scoped>
+/*
+ * La página ocupa el alto que le da el layout (pantallaCompleta).
+ * Barra y filtros quedan arriba; solo .table-body hace scroll.
+ */
 .requirements-page {
-  width: 100%;
-  padding-bottom: 32px;
-}
-
-
-.page-intro {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
-
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--pi-primary);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-
-.page-intro h2 {
-  margin: 0;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-
-.page-intro p {
-  margin: 5px 0 0;
-  color: var(--pi-text-muted);
-  font-size: 12px;
-}
-
-
-.refresh-button,
-.clear-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 35px;
-  padding: 0 12px;
-  gap: 7px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-sm);
-  background: var(--pi-surface);
-  color: var(--pi-text-secondary);
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-
-.refresh-button:hover:not(:disabled),
-.clear-button:hover {
-  background: var(--pi-surface-soft);
-}
-
-
-.refresh-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-
-.metric-card {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  padding: 15px;
-  gap: 11px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-lg);
-  background: var(--pi-surface);
-  box-shadow: var(--pi-shadow-sm);
-}
-
-
-.metric-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--pi-surface-muted);
-  color: var(--pi-text-secondary);
-}
-
-
-.metric-icon.dt {
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-
-.metric-icon.cq {
-  background: #f5f3ff;
-  color: #7c3aed;
-}
-
-
-.metric-icon.ls {
-  background: #fff7ed;
-  color: #c2410c;
-}
-
-.metric-icon.both {
-  background: #ecfdf5;
-  color: #16a34a;
-}
-
-
-.metric-icon i {
-  font-size: 13px;
-}
-
-
-.metric-card span {
-  display: block;
-  color: var(--pi-text-muted);
-  font-size: 9px;
-  font-weight: 600;
-}
-
-
-.metric-card strong {
-  display: block;
-  margin-top: 3px;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-
-.metric-card small {
-  display: block;
-  margin-top: 2px;
-  color: var(--pi-text-muted);
-  font-size: 8px;
-}
-
-
 
 .table-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--pi-border);
   border-radius: var(--pi-radius-lg);
@@ -1126,15 +1015,18 @@ function exportarCSV() {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 8px 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--pi-border);
 }
 
 .search-field {
-  flex: 1;
-  min-width: 260px;
-  max-width: 460px;
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.sources-select :deep(.p-togglebutton) {
+  font-size: 11px;
 }
 
 .toolbar-actions {
@@ -1144,67 +1036,89 @@ function exportarCSV() {
   margin-left: auto;
 }
 
-.columns-select {
-  width: 150px;
-}
-
-.filters-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--pi-border);
-  background: var(--pi-surface-soft);
-}
-
-.filter-select {
-  width: 150px;
-}
-
-.filter-select.active {
-  border-color: var(--pi-primary);
-}
-
-.filter-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 4px;
-  color: var(--pi-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
 .results-count {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  margin-left: auto;
+  margin-right: 4px;
   color: var(--pi-text-muted);
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .results-count strong {
   color: var(--pi-text);
-  font-size: 15px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
+.columns-select {
+  width: 140px;
+}
+
+.filters-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--pi-border);
+  background: var(--pi-surface-soft);
+}
+
+/* En pantallas anchas los filtros encogen para caber en una sola fila. */
+.filter-select {
+  flex: 1 1 128px;
+  min-width: 96px;
+  max-width: 170px;
+}
+
+.filter-select.active {
+  border-color: var(--pi-primary);
+  background: var(--pi-primary-soft);
+}
+
+.clear-filters {
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.table-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.requirements-table {
+  flex: 1;
+  min-height: 0;
+}
+
 .requirements-table :deep(.p-datatable-tbody > tr > td) {
+  padding-top: 6px;
+  padding-bottom: 6px;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .requirements-table :deep(.p-datatable-thead > tr > th) {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: var(--pi-surface-soft);
   color: var(--pi-text-secondary);
-  font-size: 11px;
-  font-weight: 650;
   white-space: nowrap;
 }
 
 .requirements-table :deep(.p-datatable-column-title) {
   font-size: 11px;
   font-weight: 650;
+}
+
+/* Sombra que marca dónde terminan las columnas fijas al hacer scroll horizontal. */
+.requirements-table :deep(.frozen-edge) {
+  box-shadow: inset -1px 0 0 var(--pi-border);
 }
 
 .requirements-table :deep(.clickable-row) {
@@ -1215,10 +1129,15 @@ function exportarCSV() {
   border-top: 1px solid var(--pi-border);
 }
 
+.requirements-table :deep(.p-paginator) {
+  padding: 4px 8px;
+}
+
 .requirement-cell {
   display: flex;
-  flex-direction: column;
-  max-width: 360px;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
 
 .requirement-cell strong {
@@ -1226,19 +1145,18 @@ function exportarCSV() {
   color: var(--pi-text);
   font-weight: 600;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.requirement-cell small {
-  margin-top: 2px;
-  color: var(--pi-text-muted);
-  font-size: 10px;
 }
 
 .alert-icon {
-  margin-left: 4px;
+  flex-shrink: 0;
   color: var(--pi-warning);
   font-size: 11px;
+}
+
+.cell-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .id-value {
@@ -1246,14 +1164,12 @@ function exportarCSV() {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   font-weight: 650;
-  white-space: nowrap;
 }
 
 .id-secondary {
   color: var(--pi-text-secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  white-space: nowrap;
 }
 
 .empty-value {
@@ -1261,8 +1177,15 @@ function exportarCSV() {
 }
 
 .cell-tag {
+  max-width: 100%;
+  overflow: hidden;
   font-size: 10px;
   white-space: nowrap;
+}
+
+.cell-tag :deep(.p-tag-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .source-list {
@@ -1273,11 +1196,10 @@ function exportarCSV() {
 .source-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 7px;
+  padding: 2px 7px;
   border-radius: 999px;
   font-size: 10px;
   font-weight: 650;
-  white-space: nowrap;
 }
 
 .source-dt {
@@ -1299,13 +1221,13 @@ function exportarCSV() {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-  padding: 6px 8px 10px 44px;
+  gap: 10px;
+  padding: 4px 8px 8px 44px;
 }
 
 .expansion-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, auto));
+  grid-template-columns: repeat(5, minmax(130px, auto));
   gap: 8px 28px;
 }
 
@@ -1340,7 +1262,7 @@ function exportarCSV() {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  min-height: 260px;
+  min-height: 240px;
   padding: 32px;
   text-align: center;
 }
@@ -1374,14 +1296,17 @@ function exportarCSV() {
   font-size: 11px;
 }
 
-@media (max-width: 1050px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1200px) {
+  .toolbar-actions {
+    margin-left: 0;
   }
 
-  .toolbar-actions,
-  .results-count {
-    margin-left: 0;
+  .filters-row {
+    flex-wrap: wrap;
+  }
+
+  .filter-select {
+    flex: 0 1 128px;
   }
 
   .expansion-grid {
@@ -1390,18 +1315,14 @@ function exportarCSV() {
 }
 
 @media (max-width: 650px) {
-  .page-intro {
-    flex-direction: column;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
   .search-field,
   .filter-select {
     flex: 1 1 100%;
     max-width: none;
+  }
+
+  .clear-filters {
+    margin-left: 0;
   }
 }
 </style>

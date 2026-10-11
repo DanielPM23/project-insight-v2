@@ -794,48 +794,6 @@ async function confirmarActualizacion() {
   <section class="import-page">
 
     <!-- =====================================================
-         CABECERA INTERNA
-         ===================================================== -->
-
-    <div class="page-intro">
-
-      <div>
-
-        <div class="eyebrow">
-          <i class="pi pi-database" />
-          Centro de datos
-        </div>
-
-        <h2>
-          Nueva importación
-        </h2>
-
-        <p>
-          Carga un archivo y Project Insight detectará
-          automáticamente su fuente, estructura y campos.
-        </p>
-
-      </div>
-
-
-      <div class="support-badges">
-
-        <span class="support-badge">
-          <i class="pi pi-file-excel" />
-          XLSX / XLSM
-        </span>
-
-        <span class="support-badge">
-          <i class="pi pi-sparkles" />
-          Detección automática
-        </span>
-
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
          PROGRESO
          ===================================================== -->
 
@@ -2112,114 +2070,6 @@ async function confirmarActualizacion() {
   padding-bottom: 28px;
 }
 
-
-.page-intro {
-  display: flex;
-
-  align-items: flex-start;
-  justify-content: space-between;
-
-  gap: 20px;
-
-  margin-bottom: 18px;
-}
-
-
-.eyebrow {
-  display: flex;
-
-  align-items: center;
-
-  gap: 6px;
-
-  margin-bottom: 6px;
-
-  color: var(--pi-primary);
-
-  font-size: 10px;
-  font-weight: 700;
-
-  letter-spacing: 0.06em;
-
-  text-transform: uppercase;
-}
-
-
-.eyebrow i {
-  font-size: 10px;
-}
-
-
-.page-intro h2 {
-  margin: 0;
-
-  color: var(--pi-text);
-
-  font-size: 20px;
-  font-weight: 700;
-
-  letter-spacing: -0.025em;
-}
-
-
-.page-intro p {
-  max-width: 640px;
-
-  margin: 5px 0 0;
-
-  color: var(--pi-text-muted);
-
-  font-size: 12px;
-
-  line-height: 1.55;
-}
-
-
-.support-badges {
-  display: flex;
-
-  flex-wrap: wrap;
-
-  justify-content: flex-end;
-
-  gap: 7px;
-}
-
-
-.support-badge {
-  display: inline-flex;
-
-  align-items: center;
-
-  gap: 6px;
-
-  min-height: 29px;
-
-  padding: 5px 9px;
-
-  border:
-      1px solid var(--pi-border);
-
-  border-radius: 999px;
-
-  background:
-      var(--pi-surface);
-
-  color:
-      var(--pi-text-secondary);
-
-  font-size: 10px;
-  font-weight: 600;
-}
-
-
-.support-badge i {
-  color: var(--pi-primary);
-
-  font-size: 10px;
-}
-
-
 /* =========================================================
    STEPS
    ========================================================= */
@@ -2253,7 +2103,6 @@ async function confirmarActualizacion() {
       var(--pi-shadow-sm);
 }
 
-
 .step {
   display: flex;
 
@@ -2269,11 +2118,9 @@ async function confirmarActualizacion() {
       opacity var(--pi-transition);
 }
 
-
 .step.active {
   opacity: 1;
 }
-
 
 .step-marker {
   display: flex;
@@ -2301,7 +2148,6 @@ async function confirmarActualizacion() {
   font-weight: 700;
 }
 
-
 .step.active
 .step-marker {
   border-color: #bfdbfe;
@@ -2312,7 +2158,6 @@ async function confirmarActualizacion() {
   color:
       var(--pi-primary);
 }
-
 
 .step.completed
 .step-marker {
@@ -2325,11 +2170,9 @@ async function confirmarActualizacion() {
       var(--pi-success);
 }
 
-
 .step-marker i {
   font-size: 10px;
 }
-
 
 .step-copy {
   display: flex;
@@ -2338,7 +2181,6 @@ async function confirmarActualizacion() {
 
   min-width: 0;
 }
-
 
 .step-copy strong {
   overflow: hidden;
@@ -2354,13 +2196,11 @@ async function confirmarActualizacion() {
   white-space: nowrap;
 }
 
-
 .step.active
 .step-copy strong {
   color:
       var(--pi-text);
 }
-
 
 .step-copy span {
   margin-top: 2px;
@@ -2377,14 +2217,12 @@ async function confirmarActualizacion() {
   white-space: nowrap;
 }
 
-
 .step-line {
   height: 1px;
 
   background:
       var(--pi-border);
 }
-
 
 /* =========================================================
    COMMON PANEL
@@ -2408,7 +2246,6 @@ async function confirmarActualizacion() {
       var(--pi-shadow-sm);
 }
 
-
 .panel-heading {
   display: flex;
 
@@ -2423,7 +2260,6 @@ async function confirmarActualizacion() {
       1px solid var(--pi-border);
 }
 
-
 .panel-heading h3 {
   margin: 0;
 
@@ -2434,7 +2270,6 @@ async function confirmarActualizacion() {
   font-weight: 680;
 }
 
-
 .panel-heading p {
   margin: 3px 0 0;
 
@@ -2444,7 +2279,6 @@ async function confirmarActualizacion() {
   font-size: 10px;
 }
 
-
 /* =========================================================
    UPLOAD
    ========================================================= */
@@ -2453,11 +2287,9 @@ async function confirmarActualizacion() {
   overflow: visible;
 }
 
-
 .hidden-input {
   display: none;
 }
-
 
 .ready-chip {
   display: inline-flex;
@@ -2480,7 +2312,6 @@ async function confirmarActualizacion() {
   font-size: 9px;
   font-weight: 650;
 }
-
 
 .dropzone {
   display: flex;
@@ -2516,7 +2347,6 @@ async function confirmarActualizacion() {
       var(--pi-transition);
 }
 
-
 .dropzone:hover,
 .dropzone.dragging {
   border-color:
@@ -2535,13 +2365,11 @@ async function confirmarActualizacion() {
       );
 }
 
-
 .dropzone.disabled {
   cursor: not-allowed;
 
   opacity: 0.62;
 }
-
 
 .upload-icon,
 .file-icon {
@@ -2565,11 +2393,9 @@ async function confirmarActualizacion() {
       var(--pi-primary);
 }
 
-
 .upload-icon i {
   font-size: 18px;
 }
-
 
 .file-icon {
   background:
@@ -2579,11 +2405,9 @@ async function confirmarActualizacion() {
       var(--pi-success);
 }
 
-
 .file-icon i {
   font-size: 18px;
 }
-
 
 .drop-copy,
 .selected-file {
@@ -2594,7 +2418,6 @@ async function confirmarActualizacion() {
 
   min-width: 0;
 }
-
 
 .drop-copy strong,
 .selected-file strong {
@@ -2611,7 +2434,6 @@ async function confirmarActualizacion() {
   white-space: nowrap;
 }
 
-
 .drop-copy span,
 .selected-file span {
   margin-top: 4px;
@@ -2621,7 +2443,6 @@ async function confirmarActualizacion() {
 
   font-size: 10px;
 }
-
 
 .secondary-button {
   display: inline-flex;
@@ -2662,7 +2483,6 @@ async function confirmarActualizacion() {
       var(--pi-transition);
 }
 
-
 .secondary-button:hover:not(:disabled) {
   background:
       var(--pi-surface-muted);
@@ -2671,18 +2491,15 @@ async function confirmarActualizacion() {
       var(--pi-border-strong);
 }
 
-
 .secondary-button:disabled {
   cursor: not-allowed;
 
   opacity: 0.55;
 }
 
-
 .secondary-button i {
   font-size: 10px;
 }
-
 
 .upload-note {
   display: flex;
@@ -2700,14 +2517,12 @@ async function confirmarActualizacion() {
   font-size: 9px;
 }
 
-
 .upload-note i {
   color:
       var(--pi-primary);
 
   font-size: 10px;
 }
-
 
 /* =========================================================
    LOADING / ALERT
@@ -2723,14 +2538,12 @@ async function confirmarActualizacion() {
   gap: 13px;
 }
 
-
 .analysis-loading strong {
   color:
       var(--pi-text);
 
   font-size: 12px;
 }
-
 
 .analysis-loading p {
   margin: 3px 0 0;
@@ -2740,7 +2553,6 @@ async function confirmarActualizacion() {
 
   font-size: 10px;
 }
-
 
 .spinner {
   display: flex;
@@ -2760,11 +2572,9 @@ async function confirmarActualizacion() {
       var(--pi-primary);
 }
 
-
 .spinner i {
   font-size: 15px;
 }
-
 
 .alert {
   display: flex;
@@ -2781,7 +2591,6 @@ async function confirmarActualizacion() {
       var(--pi-radius-md);
 }
 
-
 .alert-error {
   border:
       1px solid #fecaca;
@@ -2792,7 +2601,6 @@ async function confirmarActualizacion() {
   color:
       #991b1b;
 }
-
 
 .alert-icon {
   display: flex;
@@ -2811,16 +2619,13 @@ async function confirmarActualizacion() {
       #fee2e2;
 }
 
-
 .alert-icon i {
   font-size: 12px;
 }
 
-
 .alert strong {
   font-size: 11px;
 }
-
 
 .alert p {
   margin: 3px 0 0;
@@ -2832,7 +2637,6 @@ async function confirmarActualizacion() {
 
   line-height: 1.45;
 }
-
 
 /* =========================================================
    SOURCE SUMMARY
@@ -2850,11 +2654,9 @@ async function confirmarActualizacion() {
   margin-bottom: 14px;
 }
 
-
 .source-panel {
   margin-bottom: 0;
 }
-
 
 .source-header {
   display: flex;
@@ -2868,7 +2670,6 @@ async function confirmarActualizacion() {
 
   gap: 18px;
 }
-
 
 .section-label {
   display: block;
@@ -2886,7 +2687,6 @@ async function confirmarActualizacion() {
   text-transform: uppercase;
 }
 
-
 .source-title-row {
   display: flex;
 
@@ -2896,7 +2696,6 @@ async function confirmarActualizacion() {
 
   gap: 8px;
 }
-
 
 .source-badge,
 .source-mini {
@@ -2911,7 +2710,6 @@ async function confirmarActualizacion() {
   font-weight: 650;
 }
 
-
 .source-badge {
   min-height: 30px;
 
@@ -2921,11 +2719,9 @@ async function confirmarActualizacion() {
   font-size: 11px;
 }
 
-
 .source-badge i {
   font-size: 10px;
 }
-
 
 .source-mini {
   padding:
@@ -2933,7 +2729,6 @@ async function confirmarActualizacion() {
 
   font-size: 8px;
 }
-
 
 .source-dt {
   background:
@@ -2943,7 +2738,6 @@ async function confirmarActualizacion() {
       #1d4ed8;
 }
 
-
 .source-cq {
   background:
       #f5f3ff;
@@ -2951,7 +2745,6 @@ async function confirmarActualizacion() {
   color:
       #6d28d9;
 }
-
 
 .source-ls {
   background:
@@ -2961,7 +2754,6 @@ async function confirmarActualizacion() {
       #c2410c;
 }
 
-
 .source-unknown {
   background:
       #f1f5f9;
@@ -2969,7 +2761,6 @@ async function confirmarActualizacion() {
   color:
       #475569;
 }
-
 
 .status-badge {
   display: inline-flex;
@@ -2989,11 +2780,9 @@ async function confirmarActualizacion() {
   font-weight: 650;
 }
 
-
 .status-badge i {
   font-size: 8px;
 }
-
 
 .status-ok {
   background:
@@ -3003,7 +2792,6 @@ async function confirmarActualizacion() {
       var(--pi-success);
 }
 
-
 .status-warning {
   background:
       var(--pi-warning-soft);
@@ -3012,13 +2800,11 @@ async function confirmarActualizacion() {
       var(--pi-warning);
 }
 
-
 .source-meta {
   display: flex;
 
   gap: 22px;
 }
-
 
 .source-meta > div {
   display: flex;
@@ -3028,14 +2814,12 @@ async function confirmarActualizacion() {
   align-items: flex-end;
 }
 
-
 .source-meta span {
   color:
       var(--pi-text-muted);
 
   font-size: 8px;
 }
-
 
 .source-meta strong {
   margin-top: 4px;
@@ -3046,7 +2830,6 @@ async function confirmarActualizacion() {
   font-size: 10px;
   font-weight: 650;
 }
-
 
 .validation-summary {
   display: flex;
@@ -3062,7 +2845,6 @@ async function confirmarActualizacion() {
   gap: 12px;
 }
 
-
 .validation-summary.valid {
   border-color:
       #bbf7d0;
@@ -3075,7 +2857,6 @@ async function confirmarActualizacion() {
       );
 }
 
-
 .validation-summary.invalid {
   border-color:
       #fde68a;
@@ -3087,7 +2868,6 @@ async function confirmarActualizacion() {
           #fffdf5
       );
 }
-
 
 .validation-icon {
   display: flex;
@@ -3103,7 +2883,6 @@ async function confirmarActualizacion() {
   border-radius: 50%;
 }
 
-
 .valid
 .validation-icon {
   background:
@@ -3112,7 +2891,6 @@ async function confirmarActualizacion() {
   color:
       var(--pi-success);
 }
-
 
 .invalid
 .validation-icon {
@@ -3123,11 +2901,9 @@ async function confirmarActualizacion() {
       var(--pi-warning);
 }
 
-
 .validation-icon i {
   font-size: 13px;
 }
-
 
 .validation-summary > div:last-child {
   display: flex;
@@ -3135,14 +2911,12 @@ async function confirmarActualizacion() {
   flex-direction: column;
 }
 
-
 .validation-summary strong {
   color:
       var(--pi-text);
 
   font-size: 11px;
 }
-
 
 .validation-summary span {
   margin-top: 3px;
@@ -3152,7 +2926,6 @@ async function confirmarActualizacion() {
 
   font-size: 9px;
 }
-
 
 /* =========================================================
    METRICS
@@ -3171,7 +2944,6 @@ async function confirmarActualizacion() {
 
   margin-bottom: 16px;
 }
-
 
 .metric-card {
   display: flex;
@@ -3197,7 +2969,6 @@ async function confirmarActualizacion() {
       var(--pi-shadow-sm);
 }
 
-
 .metric-icon {
   display: flex;
 
@@ -3218,7 +2989,6 @@ async function confirmarActualizacion() {
       var(--pi-text-secondary);
 }
 
-
 .metric-icon.recognized {
   background:
       var(--pi-success-soft);
@@ -3227,16 +2997,13 @@ async function confirmarActualizacion() {
       var(--pi-success);
 }
 
-
 .metric-icon i {
   font-size: 11px;
 }
 
-
 .metric-card > div:last-child {
   min-width: 0;
 }
-
 
 .metric-card span {
   display: block;
@@ -3247,7 +3014,6 @@ async function confirmarActualizacion() {
   font-size: 8px;
   font-weight: 550;
 }
-
 
 .metric-card strong {
   display: block;
@@ -3267,12 +3033,10 @@ async function confirmarActualizacion() {
   white-space: nowrap;
 }
 
-
 .metric-card
 .metric-text {
   font-size: 11px;
 }
-
 
 /* =========================================================
    VALIDATION
@@ -3281,7 +3045,6 @@ async function confirmarActualizacion() {
 .validation-content {
   padding: 16px 18px;
 }
-
 
 .success-message {
   display: flex;
@@ -3307,11 +3070,9 @@ async function confirmarActualizacion() {
       var(--pi-success);
 }
 
-
 .success-message > i {
   font-size: 13px;
 }
-
 
 .success-message > div {
   display: flex;
@@ -3319,18 +3080,15 @@ async function confirmarActualizacion() {
   flex-direction: column;
 }
 
-
 .success-message strong {
   font-size: 10px;
 }
-
 
 .success-message span {
   margin-top: 2px;
 
   font-size: 9px;
 }
-
 
 .validation-stats {
   display: grid;
@@ -3343,7 +3101,6 @@ async function confirmarActualizacion() {
 
   gap: 10px;
 }
-
 
 .validation-stats > div {
   padding: 10px 11px;
@@ -3358,7 +3115,6 @@ async function confirmarActualizacion() {
       var(--pi-surface-soft);
 }
 
-
 .validation-stats span {
   display: block;
 
@@ -3367,7 +3123,6 @@ async function confirmarActualizacion() {
 
   font-size: 8px;
 }
-
 
 .validation-stats strong {
   display: block;
@@ -3380,7 +3135,6 @@ async function confirmarActualizacion() {
   font-size: 12px;
 }
 
-
 .code-value {
   font-family:
       ui-monospace,
@@ -3392,11 +3146,9 @@ async function confirmarActualizacion() {
   font-size: 9px !important;
 }
 
-
 .validation-errors {
   padding: 16px 18px;
 }
-
 
 .issue-block {
   padding: 12px;
@@ -3410,7 +3162,6 @@ async function confirmarActualizacion() {
   background:
       var(--pi-warning-soft);
 }
-
 
 .issue-title {
   display: flex;
@@ -3426,7 +3177,6 @@ async function confirmarActualizacion() {
   font-weight: 650;
 }
 
-
 .issue-chips {
   display: flex;
 
@@ -3436,7 +3186,6 @@ async function confirmarActualizacion() {
 
   margin-top: 9px;
 }
-
 
 .issue-chips span {
   padding:
@@ -3452,11 +3201,9 @@ async function confirmarActualizacion() {
   font-weight: 600;
 }
 
-
 .issue-list {
   margin-top: 10px;
 }
-
 
 .issue-list p {
   display: flex;
@@ -3474,7 +3221,6 @@ async function confirmarActualizacion() {
   font-size: 9px;
 }
 
-
 /* =========================================================
    DETAILS GRID
    ========================================================= */
@@ -3488,7 +3234,6 @@ async function confirmarActualizacion() {
 
   gap: 14px;
 }
-
 
 .count-badge {
   display: inline-flex;
@@ -3512,7 +3257,6 @@ async function confirmarActualizacion() {
   font-weight: 650;
 }
 
-
 .count-badge.neutral {
   background:
       var(--pi-surface-muted);
@@ -3521,13 +3265,11 @@ async function confirmarActualizacion() {
       var(--pi-text-secondary);
 }
 
-
 .table-wrapper {
   width: 100%;
 
   overflow-x: auto;
 }
-
 
 .mapping-table {
   max-height: 405px;
@@ -3535,13 +3277,11 @@ async function confirmarActualizacion() {
   overflow-y: auto;
 }
 
-
 table {
   width: 100%;
 
   border-collapse: collapse;
 }
-
 
 th {
   position: sticky;
@@ -3572,7 +3312,6 @@ th {
   text-transform: uppercase;
 }
 
-
 td {
   padding:
       9px 11px;
@@ -3590,24 +3329,20 @@ td {
   vertical-align: middle;
 }
 
-
 tbody tr {
   transition:
       background
       var(--pi-transition);
 }
 
-
 tbody tr:hover {
   background:
       #fafcff;
 }
 
-
 tbody tr:last-child td {
   border-bottom: none;
 }
-
 
 .excel-column {
   color:
@@ -3615,7 +3350,6 @@ tbody tr:last-child td {
 
   font-weight: 550;
 }
-
 
 .canonical-field {
   padding:
@@ -3639,7 +3373,6 @@ tbody tr:last-child td {
   font-size: 8px;
 }
 
-
 .field-type {
   display: inline-flex;
 
@@ -3658,7 +3391,6 @@ tbody tr:last-child td {
   font-weight: 650;
 }
 
-
 .field-type.required {
   background:
       var(--pi-warning-soft);
@@ -3667,11 +3399,9 @@ tbody tr:last-child td {
       var(--pi-warning);
 }
 
-
 .unused-body {
   padding: 15px 17px 17px;
 }
-
 
 .unused-info {
   display: flex;
@@ -3690,7 +3420,6 @@ tbody tr:last-child td {
   line-height: 1.45;
 }
 
-
 .unused-info i {
   margin-top: 1px;
 
@@ -3700,7 +3429,6 @@ tbody tr:last-child td {
   font-size: 10px;
 }
 
-
 .chips {
   display: flex;
 
@@ -3708,7 +3436,6 @@ tbody tr:last-child td {
 
   gap: 6px;
 }
-
 
 .chip {
   padding:
@@ -3728,7 +3455,6 @@ tbody tr:last-child td {
   font-size: 8px;
 }
 
-
 .empty-success {
   display: flex;
 
@@ -3743,7 +3469,6 @@ tbody tr:last-child td {
   font-weight: 600;
 }
 
-
 /* =========================================================
    PREVIEW
    ========================================================= */
@@ -3751,7 +3476,6 @@ tbody tr:last-child td {
 .preview-panel {
   margin-top: 0;
 }
-
 
 .heading-with-badge {
   display: flex;
@@ -3761,21 +3485,17 @@ tbody tr:last-child td {
   gap: 7px;
 }
 
-
 .heading-with-badge h3 {
   margin: 0;
 }
-
 
 .preview-table {
   min-width: 900px;
 }
 
-
 .preview-table th {
   position: static;
 }
-
 
 .id-value {
   color:
@@ -3794,7 +3514,6 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-
 .requirement-cell {
   min-width: 230px;
 
@@ -3803,7 +3522,6 @@ tbody tr:last-child td {
 
   font-weight: 500;
 }
-
 
 .neutral-tag {
   display: inline-flex;
@@ -3824,7 +3542,6 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-
 /* =========================================================
    UPDATE COMPARISON
    ========================================================= */
@@ -3843,7 +3560,6 @@ tbody tr:last-child td {
   box-shadow: var(--pi-shadow-sm);
 }
 
-
 .update-header {
   display: flex;
   align-items: flex-start;
@@ -3853,7 +3569,6 @@ tbody tr:last-child td {
   border-bottom: 1px solid #dbeafe;
 }
 
-
 .update-header h3 {
   margin: 0;
   color: var(--pi-text);
@@ -3861,13 +3576,11 @@ tbody tr:last-child td {
   font-weight: 680;
 }
 
-
 .update-header p {
   margin: 4px 0 0;
   color: var(--pi-text-muted);
   font-size: 9px;
 }
-
 
 .baseline-detected {
   display: inline-flex;
@@ -3882,7 +3595,6 @@ tbody tr:last-child td {
   font-weight: 650;
 }
 
-
 .comparison-metrics {
   display: grid;
   grid-template-columns:
@@ -3890,7 +3602,6 @@ tbody tr:last-child td {
   gap: 10px;
   padding: 14px 18px;
 }
-
 
 .comparison-card {
   display: flex;
@@ -3903,7 +3614,6 @@ tbody tr:last-child td {
   background: #ffffff;
 }
 
-
 .comparison-icon {
   display: flex;
   align-items: center;
@@ -3914,13 +3624,11 @@ tbody tr:last-child td {
   border-radius: 8px;
 }
 
-
 .comparison-card.new
 .comparison-icon {
   background: #ecfdf5;
   color: #16a34a;
 }
-
 
 .comparison-card.modified
 .comparison-icon {
@@ -3928,13 +3636,11 @@ tbody tr:last-child td {
   color: #ea580c;
 }
 
-
 .comparison-card.unchanged
 .comparison-icon {
   background: #f1f5f9;
   color: #64748b;
 }
-
 
 .comparison-card.inactive
 .comparison-icon {
@@ -3942,14 +3648,12 @@ tbody tr:last-child td {
   color: #dc2626;
 }
 
-
 .comparison-card strong {
   display: block;
   color: var(--pi-text);
   font-size: 17px;
   font-weight: 700;
 }
-
 
 .comparison-card span {
   display: block;
@@ -3959,7 +3663,6 @@ tbody tr:last-child td {
   font-weight: 600;
 }
 
-
 .changes-preview {
   margin: 0 18px 14px;
   overflow: hidden;
@@ -3967,7 +3670,6 @@ tbody tr:last-child td {
   border-radius: var(--pi-radius-md);
   background: #ffffff;
 }
-
 
 .changes-preview-header {
   display: flex;
@@ -3979,18 +3681,15 @@ tbody tr:last-child td {
   background: var(--pi-surface-soft);
 }
 
-
 .changes-preview-header > div {
   display: flex;
   flex-direction: column;
 }
 
-
 .changes-preview-header strong {
   color: var(--pi-text);
   font-size: 9px;
 }
-
 
 .changes-preview-header span {
   margin-top: 2px;
@@ -3998,12 +3697,10 @@ tbody tr:last-child td {
   font-size: 8px;
 }
 
-
 .changes-list {
   max-height: 310px;
   overflow-y: auto;
 }
-
 
 .change-row {
   display: grid;
@@ -4015,18 +3712,15 @@ tbody tr:last-child td {
   border-bottom: 1px solid #edf2f7;
 }
 
-
 .change-row:last-child {
   border-bottom: none;
 }
-
 
 .change-record {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-
 
 .change-record strong {
   color: var(--pi-primary);
@@ -4039,7 +3733,6 @@ tbody tr:last-child td {
   font-size: 8px;
 }
 
-
 .change-record span {
   margin-top: 3px;
   overflow: hidden;
@@ -4049,14 +3742,12 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-
 .change-fields {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
 }
-
 
 .change-chip {
   display: inline-flex;
@@ -4069,18 +3760,15 @@ tbody tr:last-child td {
   font-size: 7px;
 }
 
-
 .change-chip i {
   color: var(--pi-text-muted);
   font-size: 6px;
 }
 
-
 .change-field {
   color: var(--pi-text-secondary);
   font-weight: 700;
 }
-
 
 .change-old {
   max-width: 120px;
@@ -4091,7 +3779,6 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-
 .change-new {
   max-width: 120px;
   overflow: hidden;
@@ -4101,13 +3788,11 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-
 .more-changes {
   color: var(--pi-primary);
   font-size: 7px;
   font-weight: 650;
 }
-
 
 .inactive-note {
   display: flex;
@@ -4123,12 +3808,10 @@ tbody tr:last-child td {
   line-height: 1.45;
 }
 
-
 .inactive-note i {
   margin-top: 1px;
   font-size: 9px;
 }
-
 
 .update-action {
   display: flex;
@@ -4139,25 +3822,21 @@ tbody tr:last-child td {
   border-top: 1px solid #dbeafe;
 }
 
-
 .update-action > div {
   display: flex;
   flex-direction: column;
 }
-
 
 .update-action strong {
   color: var(--pi-text);
   font-size: 9px;
 }
 
-
 .update-action span {
   margin-top: 2px;
   color: var(--pi-text-muted);
   font-size: 8px;
 }
-
 
 .update-success {
   display: flex;
@@ -4173,7 +3852,6 @@ tbody tr:last-child td {
   font-weight: 600;
 }
 
-
 @media (max-width: 900px) {
   .comparison-metrics {
     grid-template-columns:
@@ -4184,7 +3862,6 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
-
 
 @media (max-width: 620px) {
   .update-header,
@@ -4201,7 +3878,6 @@ tbody tr:last-child td {
     width: 100%;
   }
 }
-
 
 /* =========================================================
    BASELINE
@@ -4238,7 +3914,6 @@ tbody tr:last-child td {
       var(--pi-shadow-sm);
 }
 
-
 .baseline-card.completed {
   border-color:
       #bbf7d0;
@@ -4250,7 +3925,6 @@ tbody tr:last-child td {
           #f5fff8 100%
       );
 }
-
 
 .baseline-icon {
   display: flex;
@@ -4270,7 +3944,6 @@ tbody tr:last-child td {
       var(--pi-primary);
 }
 
-
 .completed
 .baseline-icon {
   background:
@@ -4280,11 +3953,9 @@ tbody tr:last-child td {
       var(--pi-success);
 }
 
-
 .baseline-icon i {
   font-size: 14px;
 }
-
 
 .baseline-copy h3 {
   margin:
@@ -4296,7 +3967,6 @@ tbody tr:last-child td {
   font-size: 12px;
   font-weight: 680;
 }
-
 
 .baseline-copy p {
   max-width: 620px;
@@ -4310,7 +3980,6 @@ tbody tr:last-child td {
 
   line-height: 1.5;
 }
-
 
 .inline-success {
   display: flex;
@@ -4328,7 +3997,6 @@ tbody tr:last-child td {
   font-weight: 600;
 }
 
-
 .baseline-action {
   display: flex;
 
@@ -4336,7 +4004,6 @@ tbody tr:last-child td {
 
   gap: 14px;
 }
-
 
 .baseline-count {
   display: flex;
@@ -4346,14 +4013,12 @@ tbody tr:last-child td {
   align-items: flex-end;
 }
 
-
 .baseline-count strong {
   color:
       var(--pi-text);
 
   font-size: 15px;
 }
-
 
 .baseline-count span {
   margin-top: 1px;
@@ -4363,7 +4028,6 @@ tbody tr:last-child td {
 
   font-size: 8px;
 }
-
 
 .primary-button {
   display: inline-flex;
@@ -4411,7 +4075,6 @@ tbody tr:last-child td {
       var(--pi-transition);
 }
 
-
 .primary-button:hover:not(:disabled) {
   background:
       var(--pi-primary-hover);
@@ -4429,7 +4092,6 @@ tbody tr:last-child td {
       translateY(-1px);
 }
 
-
 .primary-button:disabled {
   background:
       #94a3b8;
@@ -4441,11 +4103,9 @@ tbody tr:last-child td {
   transform: none;
 }
 
-
 .primary-button i {
   font-size: 9px;
 }
-
 
 /* =========================================================
    RESPONSIVE
@@ -4463,14 +4123,11 @@ max-width: 1180px
       );
   }
 
-
   .details-grid {
     grid-template-columns:
       1fr;
   }
-
 }
-
 
 @media (
 max-width: 900px
@@ -4481,7 +4138,6 @@ max-width: 900px
       1fr;
   }
 
-
   .validation-stats {
     grid-template-columns:
       repeat(
@@ -4490,12 +4146,10 @@ max-width: 900px
       );
   }
 
-
   .baseline-card {
     grid-template-columns:
       auto 1fr;
   }
-
 
   .baseline-action {
     grid-column:
@@ -4504,24 +4158,11 @@ max-width: 900px
     justify-content:
         space-between;
   }
-
 }
-
 
 @media (
 max-width: 720px
 ) {
-
-  .page-intro {
-    flex-direction: column;
-  }
-
-
-  .support-badges {
-    justify-content:
-        flex-start;
-  }
-
 
   .steps-card {
     grid-template-columns:
@@ -4530,16 +4171,13 @@ max-width: 720px
     gap: 8px;
   }
 
-
   .step-line {
     display: none;
   }
 
-
   .step-copy span {
     display: none;
   }
-
 
   .dropzone {
     align-items:
@@ -4548,11 +4186,9 @@ max-width: 720px
     flex-wrap: wrap;
   }
 
-
   .secondary-button {
     width: 100%;
   }
-
 
   .source-header {
     align-items:
@@ -4562,7 +4198,6 @@ max-width: 720px
         column;
   }
 
-
   .source-meta {
     width: 100%;
 
@@ -4570,12 +4205,10 @@ max-width: 720px
         space-between;
   }
 
-
   .source-meta > div {
     align-items:
         flex-start;
   }
-
 
   .metrics-grid {
     grid-template-columns:
@@ -4585,17 +4218,14 @@ max-width: 720px
       );
   }
 
-
   .baseline-card {
     grid-template-columns:
       1fr;
   }
 
-
   .baseline-icon {
     display: none;
   }
-
 
   .baseline-action {
     grid-column:
@@ -4608,19 +4238,15 @@ max-width: 720px
         column;
   }
 
-
   .baseline-count {
     align-items:
         flex-start;
   }
 
-
   .primary-button {
     width: 100%;
   }
-
 }
-
 
 @media (
 max-width: 480px
@@ -4631,9 +4257,7 @@ max-width: 480px
     grid-template-columns:
       1fr;
   }
-
 }
-
 
 .history-panel {
   margin-top: 20px;

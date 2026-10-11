@@ -98,14 +98,7 @@ async function guardar() {
 <template>
   <section class="configuracion-page">
 
-    <div class="page-intro">
-      <div class="eyebrow">
-        <i class="pi pi-cog" />
-        Administración
-      </div>
-      <h2>Configuración</h2>
-      <p>Parámetros de Project Insight que aplican a todos los usuarios.</p>
-    </div>
+
 
     <div v-if="error" class="mensaje error" role="alert">
       <i class="pi pi-exclamation-triangle" />
@@ -193,35 +186,6 @@ async function guardar() {
   width: 100%;
   max-width: 900px;
   padding-bottom: 32px;
-}
-
-.page-intro {
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--pi-primary);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.page-intro h2 {
-  margin: 0;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.page-intro p {
-  margin: 5px 0 0;
-  color: var(--pi-text-muted);
-  font-size: 12px;
 }
 
 .mensaje {

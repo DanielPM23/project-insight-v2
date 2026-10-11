@@ -55,7 +55,7 @@ const router = createRouter({
                             "Dashboard",
 
                         subtitulo:
-                            "Vista general de Project Insight"
+                            "Indicadores de Demanda Táctica, Listado y ClearQuest"
                     }
                 },
 
@@ -72,7 +72,11 @@ const router = createRouter({
                         titulo:
                             "Requerimientos",
                         subtitulo:
-                            "Consulta y gestión de requerimientos"
+                            "Vista consolidada de Demanda Táctica, ClearQuest y Listado",
+
+                        // La tabla ocupa el alto disponible y hace scroll por dentro.
+                        pantallaCompleta:
+                            true
                     }
                 },
 
@@ -108,7 +112,7 @@ const router = createRouter({
                             "Importaciones",
 
                         subtitulo:
-                            "Carga y análisis de fuentes de datos",
+                            "Carga un Excel: se detecta su fuente y se compara con la última carga",
 
                         soloAdmin:
                             true
@@ -159,7 +163,7 @@ const router = createRouter({
                         titulo:
                             "Alertas",
                         subtitulo:
-                            "Seguimiento de fechas de fin de desarrollo"
+                            "Fin Desarrollo de Demanda Táctica vencido, que vence hoy o está por vencer"
                     }
                 },
 
@@ -175,7 +179,7 @@ const router = createRouter({
                         titulo:
                             "Auditoría",
                         subtitulo:
-                            "Historial de cargas y cambios por requerimiento"
+                            "Qué cambió en cada carga y la historia de cada requerimiento"
                     }
                 },
 
@@ -210,7 +214,7 @@ const router = createRouter({
                             "Usuarios",
 
                         subtitulo:
-                            "Accesos y roles",
+                            "Administradores cargan datos y dan acceso; consulta solo visualiza",
 
                         soloAdmin:
                             true

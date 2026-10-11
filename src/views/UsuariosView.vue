@@ -115,17 +115,7 @@ function alCambiarRol(item: PerfilUsuario, evento: Event) {
 <template>
   <section class="usuarios-page">
 
-    <div class="page-intro">
-      <div class="eyebrow">
-        <i class="pi pi-users" />
-        Accesos
-      </div>
-      <h2>Usuarios</h2>
-      <p>
-        Los <strong>administradores</strong> cargan los Excels y dan acceso.
-        Los usuarios de <strong>consulta</strong> solo ven Dashboard y Requerimientos.
-      </p>
-    </div>
+
 
 
     <div
@@ -297,35 +287,6 @@ function alCambiarRol(item: PerfilUsuario, evento: Event) {
 .usuarios-page {
   width: 100%;
   padding-bottom: 32px;
-}
-
-.page-intro {
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--pi-primary);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.page-intro h2 {
-  margin: 0;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.page-intro p {
-  margin: 5px 0 0;
-  color: var(--pi-text-muted);
-  font-size: 12px;
 }
 
 .mensaje {

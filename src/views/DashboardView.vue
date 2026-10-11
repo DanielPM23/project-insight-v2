@@ -8,6 +8,8 @@ import {
   storeToRefs
 } from "pinia";
 
+import Button from "primevue/button";
+
 import {
   useRequerimientosStore
 } from "../stores/requerimientosStore";
@@ -274,39 +276,17 @@ const actividadesCQ =
 <template>
   <section class="dashboard-page">
 
-    <div class="page-intro">
-
-      <div>
-        <div class="eyebrow">
-          <i class="pi pi-chart-bar" />
-          Vista general
-        </div>
-
-        <h2>Dashboard</h2>
-
-        <p>
-          Indicadores de Demanda Táctica, Listado y ClearQuest.
-          Haz clic en una barra para ver esos requerimientos.
-        </p>
-      </div>
-
-      <button
-          class="refresh-button"
-          type="button"
-          :disabled="cargando"
+    <Teleport defer to="#topbar-acciones">
+      <Button
+          label="Actualizar"
+          icon="pi pi-refresh"
+          severity="secondary"
+          outlined
+          size="small"
+          :loading="cargando"
           @click="alertasStore.cargar(true)"
-      >
-        <i
-            :class="
-            cargando
-              ? 'pi pi-spin pi-spinner'
-              : 'pi pi-refresh'
-          "
-        />
-        Actualizar
-      </button>
-
-    </div>
+      />
+    </Teleport>
 
 
     <div
@@ -404,60 +384,6 @@ const actividadesCQ =
 .dashboard-page {
   width: 100%;
   padding-bottom: 32px;
-}
-
-.page-intro {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--pi-primary);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.page-intro h2 {
-  margin: 0;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.page-intro p {
-  margin: 5px 0 0;
-  color: var(--pi-text-muted);
-  font-size: 12px;
-}
-
-.refresh-button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 35px;
-  padding: 0 12px;
-  gap: 7px;
-  border: 1px solid var(--pi-border);
-  border-radius: var(--pi-radius-sm);
-  background: var(--pi-surface);
-  color: var(--pi-text-secondary);
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.refresh-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .error-box {
@@ -585,10 +511,6 @@ max-width: 600px
   .grid-metricas {
     grid-template-columns:
       1fr;
-  }
-
-  .page-intro {
-    flex-direction: column;
   }
 }
 </style>

@@ -81,6 +81,9 @@ const subtitulo = computed(
 
     <div class="topbar-right">
 
+      <!-- Las vistas ponen aquí sus acciones (Actualizar, etc.) con <Teleport defer>. -->
+      <div id="topbar-acciones" class="page-actions" />
+
       <div class="global-search">
         <i class="pi pi-search" />
 
@@ -224,6 +227,16 @@ const subtitulo = computed(
 
 .topbar-right {
   gap: 10px;
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-actions:empty {
+  display: none;
 }
 
 .icon-button {

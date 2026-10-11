@@ -83,20 +83,7 @@ function abrir(alerta: AlertaDesarrollo) {
 <template>
   <section class="alertas-page">
 
-    <div class="page-intro">
-      <div>
-        <div class="eyebrow">
-          <i class="pi pi-bell" />
-          Seguimiento
-        </div>
-        <h2>Alertas de desarrollo</h2>
-        <p>
-          Requerimientos con fecha final de desarrollo (Fin Desarrollo de Demanda Táctica)
-          vencida, que vence hoy o en los próximos {{ configuracion.diasAnticipacion }} días.
-          <RouterLink v-if="auth.esAdmin" :to="{ name: 'configuracion' }">Cambiar los días</RouterLink>
-        </p>
-      </div>
-
+    <Teleport defer to="#topbar-acciones">
       <Button
           label="Actualizar"
           icon="pi pi-refresh"
@@ -106,7 +93,7 @@ function abrir(alerta: AlertaDesarrollo) {
           :loading="cargando"
           @click="store.cargar(true)"
       />
-    </div>
+    </Teleport>
 
     <div v-if="error" class="error-box" role="alert">
       <i class="pi pi-exclamation-triangle" />
@@ -132,16 +119,22 @@ function abrir(alerta: AlertaDesarrollo) {
     </div>
 
     <div class="panel">
-      <SelectButton
-          v-model="filtros"
-          :options="opciones"
-          option-label="etiqueta"
-          option-value="valor"
-          multiple
-          size="small"
-          class="filtros"
-          aria-label="Filtrar alertas"
-      />
+      <div class="panel-cabecera">
+        <SelectButton
+            v-model="filtros"
+            :options="opciones"
+            option-label="etiqueta"
+            option-value="valor"
+            multiple
+            size="small"
+            class="filtros"
+            aria-label="Filtrar alertas"
+        />
+
+        <RouterLink v-if="auth.esAdmin" :to="{ name: 'configuracion' }" class="cambiar-dias">
+          <i class="pi pi-cog" /> Cambiar los días
+        </RouterLink>
+      </div>
 
       <DataTable
           :value="filas"
@@ -195,8 +188,17 @@ function abrir(alerta: AlertaDesarrollo) {
           </template>
         </Column>
 
-        <Column field="estado" header="Estado" sortable style="width: 11rem" />
-        <Column field="responsable" header="Responsable" sortable style="width: 12rem" />
+        <Column field="estado" header="Estado" sortable style="width: 11rem">
+          <template #body="{ data }">
+            <span class="celda-corta" :title="data.estado">{{ data.estado }}</span>
+          </template>
+        </Column>
+
+        <Column field="responsable" header="Responsable" sortable style="width: 13rem">
+          <template #body="{ data }">
+            <span class="celda-corta" :title="data.responsable">{{ data.responsable }}</span>
+          </template>
+        </Column>
       </DataTable>
     </div>
 
@@ -208,43 +210,6 @@ function abrir(alerta: AlertaDesarrollo) {
 .alertas-page {
   width: 100%;
   padding-bottom: 32px;
-}
-
-.page-intro {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--pi-primary);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.page-intro h2 {
-  margin: 0;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.page-intro p {
-  margin: 5px 0 0;
-  color: var(--pi-text-muted);
-  font-size: 12px;
-}
-
-.page-intro a {
-  color: var(--pi-primary);
 }
 
 .error-box {
@@ -328,8 +293,19 @@ function abrir(alerta: AlertaDesarrollo) {
   box-shadow: var(--pi-shadow-sm);
 }
 
-.filtros {
+.panel-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 12px;
+}
+
+.cambiar-dias {
+  color: var(--pi-primary);
+  font-size: 11px;
+  text-decoration: none;
 }
 
 .tabla :deep(.p-datatable-tbody > tr) {
@@ -338,6 +314,14 @@ function abrir(alerta: AlertaDesarrollo) {
 
 .tabla :deep(.p-datatable-tbody > tr > td) {
   font-size: 12px;
+  white-space: nowrap;
+}
+
+.celda-corta {
+  display: block;
+  max-width: 13rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tabla :deep(.p-datatable-column-title) {
@@ -386,10 +370,6 @@ function abrir(alerta: AlertaDesarrollo) {
 @media (max-width: 600px) {
   .tarjetas {
     grid-template-columns: 1fr;
-  }
-
-  .page-intro {
-    flex-direction: column;
   }
 }
 </style>

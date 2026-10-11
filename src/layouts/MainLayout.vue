@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { RouterView } from "vue-router";
+import { RouterView, useRoute } from "vue-router";
 
 import AppSidebar from "../components/navigation/AppSidebar.vue";
 import AppTopbar from "../components/navigation/AppTopbar.vue";
@@ -13,6 +13,8 @@ import { useAlertasStore } from "../stores/alertasStore";
 const alertasStore = useAlertasStore();
 
 onMounted(() => alertasStore.cargar());
+
+const route = useRoute();
 
 const sidebarColapsado = ref(false);
 
@@ -39,7 +41,10 @@ function alternarSidebar() {
           @alternar-sidebar="alternarSidebar"
       />
 
-      <main class="content-shell">
+      <main
+          class="content-shell"
+          :class="{ 'pantalla-completa': route.meta.pantallaCompleta }"
+      >
         <div class="content-inner">
           <RouterView />
         </div>
@@ -77,9 +82,28 @@ function alternarSidebar() {
   margin: 0 auto;
 }
 
+/*
+ * Vistas de trabajo (Requerimientos): ocupan exactamente el alto
+ * visible para que solo la tabla haga scroll, no la página.
+ */
+.content-shell.pantalla-completa {
+  height: calc(100dvh - var(--pi-topbar-height));
+  min-height: 480px;
+  padding: 12px 16px;
+}
+
+.pantalla-completa .content-inner {
+  height: 100%;
+  max-width: none;
+}
+
 @media (max-width: 900px) {
   .content-shell {
     padding: 16px;
+  }
+
+  .content-shell.pantalla-completa {
+    padding: 10px;
   }
 }
 </style>

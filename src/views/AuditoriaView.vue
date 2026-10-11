@@ -206,19 +206,7 @@ watch(() => route.query, aplicarQuery);
 <template>
   <section class="auditoria-page">
 
-    <div class="page-intro">
-      <div>
-        <div class="eyebrow">
-          <i class="pi pi-shield" />
-          Trazabilidad
-        </div>
-        <h2>Auditoría</h2>
-        <p>
-          Qué cambió en cada carga de Demanda Táctica, ClearQuest y Listado,
-          y la historia de cada requerimiento con su valor anterior y nuevo.
-        </p>
-      </div>
-
+    <Teleport defer to="#topbar-acciones">
       <Button
           label="Actualizar"
           icon="pi pi-refresh"
@@ -228,7 +216,7 @@ watch(() => route.query, aplicarQuery);
           :loading="cargandoCargas"
           @click="cargarCargas"
       />
-    </div>
+    </Teleport>
 
     <div v-if="error" class="error-box" role="alert">
       <i class="pi pi-exclamation-triangle" />
@@ -361,39 +349,6 @@ watch(() => route.query, aplicarQuery);
 .auditoria-page {
   width: 100%;
   padding-bottom: 32px;
-}
-
-.page-intro {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 14px;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--pi-primary);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.page-intro h2 {
-  margin: 0;
-  color: var(--pi-text);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.page-intro p {
-  margin: 5px 0 0;
-  color: var(--pi-text-muted);
-  font-size: 12px;
 }
 
 .error-box {
@@ -532,10 +487,6 @@ watch(() => route.query, aplicarQuery);
 @media (max-width: 700px) {
   .resumen {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .page-intro {
-    flex-direction: column;
   }
 }
 </style>
