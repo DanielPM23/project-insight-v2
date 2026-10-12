@@ -118,7 +118,7 @@ const DEMANDA_TACTICA: ConfiguracionFuente = {
     ],
 
     columnasVista: [
-        { campo: "id_demanda", titulo: "ID Demanda" },
+        { campo: "id_historico", titulo: "ID Histórico" },
         { campo: "id_mantenimiento", titulo: "ID Mantenimiento" },
         { campo: "id_tramite", titulo: "ID Trámite" },
         { campo: "nombre_requerimiento", titulo: "Requerimiento" },
@@ -129,15 +129,16 @@ const DEMANDA_TACTICA: ConfiguracionFuente = {
     campos: {
 
         id_historico: {
-            obligatorio: false,
+            obligatorio: true,
             aliases: [
                 "ID Histórico",
                 "ID Historico"
             ]
         },
 
+        // Desde la versión de octubre de 2026 el Excel ya no trae ID Demanda.
         id_demanda: {
-            obligatorio: true,
+            obligatorio: false,
             aliases: [
                 "ID Demanda",
                 "ID de Demanda"
@@ -324,19 +325,26 @@ const CLEARQUEST: ConfiguracionFuente = {
     codigo:
         "CQ",
 
+    /*
+     * El reporte antiguo trae una fila por actividad con su id
+     * (BNCM...). El nuevo trae una fila por trámite, sin id: ahí
+     * la clave es mantenimiento + trámite, porque hay trámites
+     * repetidos en distintos mantenimientos.
+     */
     camposClave: [
         "id_cq",
+        "id_mantenimiento+id_tramite",
         "id_mantenimiento"
     ],
 
     nombreClave:
-        "id (ClearQuest)",
+        "id o ID Mantenimiento + ID Trámite (ClearQuest)",
 
     campoMantenimiento:
         "id_mantenimiento",
 
     campoTramite:
-        null,
+        "id_tramite",
 
     campoNombre:
         "descripcion_cq",
@@ -347,12 +355,12 @@ const CLEARQUEST: ConfiguracionFuente = {
     hojasPreferidas: [],
 
     columnasVista: [
-        { campo: "id_mantenimiento", titulo: "Actividad" },
-        { campo: "id_cq", titulo: "id CQ" },
+        { campo: "id_mantenimiento", titulo: "Mantenimiento" },
+        { campo: "id_tramite", titulo: "Trámite" },
         { campo: "descripcion_cq", titulo: "Resumen" },
-        { campo: "aplicacion_cq", titulo: "Proyecto" },
-        { campo: "analista_cq", titulo: "Responsable" },
-        { campo: "estado_cq", titulo: "Estado" }
+        { campo: "estado_cq", titulo: "Estado" },
+        { campo: "estado_desarrollo_cq", titulo: "Estado desarrollo" },
+        { campo: "analista_cq", titulo: "Responsable" }
     ],
 
     campos: {
@@ -360,6 +368,7 @@ const CLEARQUEST: ConfiguracionFuente = {
         id_mantenimiento: {
             obligatorio: true,
             aliases: [
+                "ID_Mantenimiento",
                 "Actividad_ID",
                 "Actividad ID",
                 "Mantto. ID",
@@ -373,6 +382,46 @@ const CLEARQUEST: ConfiguracionFuente = {
             obligatorio: false,
             aliases: [
                 "id"
+            ]
+        },
+
+        id_tramite: {
+            obligatorio: false,
+            aliases: [
+                "ID_Tramite",
+                "ID Trámite",
+                "ID Tramite"
+            ]
+        },
+
+        estado_desarrollo_cq: {
+            obligatorio: false,
+            aliases: [
+                "EstadoDesarrollo",
+                "Estado Desarrollo"
+            ]
+        },
+
+        numero_documento_cq: {
+            obligatorio: false,
+            aliases: [
+                "NumeroDocumento",
+                "Número Documento",
+                "Numero Documento"
+            ]
+        },
+
+        prioridad_cq: {
+            obligatorio: false,
+            aliases: [
+                "Prioridad"
+            ]
+        },
+
+        tipo_cq: {
+            obligatorio: false,
+            aliases: [
+                "Tipo"
             ]
         },
 
@@ -400,7 +449,9 @@ const CLEARQUEST: ConfiguracionFuente = {
             obligatorio: false,
             aliases: [
                 "AREA SOLICITANTE",
-                "ÁREA SOLICITANTE"
+                "ÁREA SOLICITANTE",
+                "Area",
+                "Área"
             ]
         },
 
@@ -409,7 +460,9 @@ const CLEARQUEST: ConfiguracionFuente = {
             tipo: "fecha",
             aliases: [
                 "F.REGISTRO",
-                "F. REGISTRO"
+                "F. REGISTRO",
+                "FechaRegistro",
+                "Fecha Registro"
             ]
         },
 

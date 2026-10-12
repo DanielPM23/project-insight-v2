@@ -107,17 +107,23 @@ export function limpiarIdDocumento(
 
 /*
  * Primer campo clave con valor (por ejemplo ID Histórico
- * y, si no viene, ID Demanda).
+ * y, si no viene, ID Demanda). Un campo "a+b" es una clave
+ * compuesta: solo vale si todas sus partes tienen valor.
  */
 export function obtenerClaveRegistro(
     registro: Record<string, unknown>,
     camposClave: string[]
 ): string {
     for (const campo of camposClave) {
+        const partes =
+            campo
+                .split("+")
+                .map(parte => limpiarClave(registro[parte]));
+
         const clave =
-            limpiarClave(
-                registro[campo]
-            );
+            partes.every(Boolean)
+                ? partes.join("_")
+                : "";
 
         if (clave) {
             return clave;

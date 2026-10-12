@@ -381,6 +381,7 @@ const requerimientosFiltrados =
           item.idMantenimiento,
           item.idTramite,
           item.idDemanda,
+          item.idHistorico,
           item.caso,
           item.nombre,
           item.estado,
@@ -413,6 +414,7 @@ interface ColumnaTabla {
  * al cambiar de página o de filtro.
  */
 const COLUMNAS: ColumnaTabla[] = [
+  { campo: "idHistorico", nombre: "ID Histórico", ancho: "7rem" },
   { campo: "idDemanda", nombre: "ID Demanda / Caso", ancho: "8.5rem" },
   { campo: "fuentes", nombre: "Fuentes", ancho: "8rem" },
   { campo: "estado", nombre: "Estado", ancho: "13rem" },
@@ -909,6 +911,13 @@ function exportarCSV() {
               </span>
 
               <span
+                  v-else-if="columna.campo === 'idHistorico' && data.idHistorico"
+                  class="id-secondary"
+              >
+                {{ data.idHistorico }}
+              </span>
+
+              <span
                   v-else-if="columna.campo === 'idDemanda' && (data.idDemanda || data.caso)"
                   class="id-secondary"
               >
@@ -916,7 +925,7 @@ function exportarCSV() {
               </span>
 
               <span
-                  v-else-if="!['idTramite', 'idDemanda', 'estado', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
+                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
                   class="cell-text"
                   :title="String(data[columna.campo])"
               >
@@ -934,7 +943,7 @@ function exportarCSV() {
               <div class="expansion-grid">
                 <div>
                   <span>Demanda Táctica</span>
-                  <strong>{{ data.demandaTactica ? (data.idDemanda || "Sí") : "No está" }}</strong>
+                  <strong>{{ data.demandaTactica ? (data.idHistorico ? `ID Histórico ${data.idHistorico}` : "Sí") : "No está" }}</strong>
                 </div>
                 <div>
                   <span>Casos del Listado</span>

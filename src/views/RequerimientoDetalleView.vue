@@ -236,13 +236,22 @@ const actividadesOrdenadas =
     computed(() =>
         [...(requerimiento.value?.clearQuest ?? [])]
             .sort((a, b) =>
-                texto(a.datos.id_mantenimiento)
+                `${texto(a.datos.id_mantenimiento)} ${texto(a.datos.id_tramite)}`
                     .localeCompare(
-                        texto(b.datos.id_mantenimiento),
+                        `${texto(b.datos.id_mantenimiento)} ${texto(b.datos.id_tramite)}`,
                         "es",
                         { numeric: true }
                     )
             )
+    );
+
+/*
+ * El reporte nuevo de CQ trae una fila por trámite (con estado
+ * de desarrollo) y ya no trae las fechas de plan y ejecución.
+ */
+const cqPorTramite =
+    computed(() =>
+        actividadesOrdenadas.value.some(actividad => actividad.datos.id_tramite)
     );
 
 
@@ -418,6 +427,12 @@ function claseFuente(
               class="id-chip"
           >
             {{ requerimiento.idTramite }}
+          </span>
+          <span
+              v-if="requerimiento.idHistorico"
+              class="id-chip"
+          >
+            ID Histórico {{ requerimiento.idHistorico }}
           </span>
           <span
               v-if="requerimiento.idDemanda"
@@ -641,14 +656,23 @@ function claseFuente(
             class="tab-body"
         >
           <p class="hint">
-            {{ actividadesOrdenadas.length }} actividad(es) de ClearQuest.
+            {{ actividadesOrdenadas.length }} {{ cqPorTramite ? "trámite(s)" : "actividad(es)" }} de ClearQuest.
             Selecciona una para ver todos sus campos.
           </p>
 
           <div class="table-wrapper">
             <table>
               <thead>
-              <tr>
+              <tr v-if="cqPorTramite">
+                <th>Mantenimiento</th>
+                <th>Trámite</th>
+                <th>Estado</th>
+                <th>Estado desarrollo</th>
+                <th>Resumen</th>
+                <th>Responsable</th>
+                <th>Registro</th>
+              </tr>
+              <tr v-else>
                 <th>Actividad</th>
                 <th>Estado</th>
                 <th>Resumen</th>
@@ -671,13 +695,24 @@ function claseFuente(
                     @click="alternarActividad(actividad.idDocumento)"
                     @keydown.enter="alternarActividad(actividad.idDocumento)"
                 >
-                  <td class="id-value">{{ texto(actividad.datos.id_mantenimiento) }}</td>
-                  <td><span class="status-badge">{{ actividad.estado || "—" }}</span></td>
-                  <td>{{ actividad.nombre || "—" }}</td>
-                  <td>{{ texto(actividad.datos.analista_cq) || "—" }}</td>
-                  <td>{{ formatearValor(actividad.datos.fecha_inicio_plan_cq) || "—" }}</td>
-                  <td>{{ formatearValor(actividad.datos.fecha_final_plan_cq) || "—" }}</td>
-                  <td>{{ formatearValor(actividad.datos.fecha_final_ejec_cq) || "—" }}</td>
+                  <template v-if="cqPorTramite">
+                    <td class="id-value">{{ texto(actividad.datos.id_mantenimiento) }}</td>
+                    <td class="id-value">{{ texto(actividad.datos.id_tramite) || "—" }}</td>
+                    <td><span class="status-badge">{{ actividad.estado || "—" }}</span></td>
+                    <td>{{ texto(actividad.datos.estado_desarrollo_cq) || "—" }}</td>
+                    <td>{{ actividad.nombre || "—" }}</td>
+                    <td>{{ texto(actividad.datos.analista_cq) || "—" }}</td>
+                    <td>{{ formatearValor(actividad.datos.fecha_registro_cq) || "—" }}</td>
+                  </template>
+                  <template v-else>
+                    <td class="id-value">{{ texto(actividad.datos.id_mantenimiento) }}</td>
+                    <td><span class="status-badge">{{ actividad.estado || "—" }}</span></td>
+                    <td>{{ actividad.nombre || "—" }}</td>
+                    <td>{{ texto(actividad.datos.analista_cq) || "—" }}</td>
+                    <td>{{ formatearValor(actividad.datos.fecha_inicio_plan_cq) || "—" }}</td>
+                    <td>{{ formatearValor(actividad.datos.fecha_final_plan_cq) || "—" }}</td>
+                    <td>{{ formatearValor(actividad.datos.fecha_final_ejec_cq) || "—" }}</td>
+                  </template>
                 </tr>
 
                 <tr

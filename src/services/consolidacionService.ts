@@ -46,6 +46,11 @@ export interface Requerimiento {
     idDemanda: string;
     caso: string;
 
+    /*
+     * ID Histórico de Demanda Táctica (clave de su fila).
+     */
+    idHistorico: string;
+
     nombre: string;
     estado: string;
     responsable: string;
@@ -162,6 +167,7 @@ function crearRequerimiento(
         idTramite: "",
         idDemanda: "",
         caso: "",
+        idHistorico: "",
         nombre: "",
         estado: "",
         responsable: "",
@@ -181,20 +187,23 @@ function crearRequerimiento(
 
 
 /*
- * La última actividad de CQ (por ID de actividad)
- * representa el estado actual del mantenimiento.
+ * La última actividad de CQ representa el estado actual del
+ * mantenimiento: por ID de actividad en el reporte antiguo
+ * (2024-M0001-A002) y por trámite en el nuevo.
  */
 function ultimaActividad(
     actividades: RegistroFuente[]
 ): RegistroFuente | undefined {
+    const orden = (registro: RegistroFuente) =>
+        `${texto(registro.datos.id_mantenimiento)} ${registro.idTramite ?? ""}`;
+
     return [...actividades]
         .sort((a, b) =>
-            texto(a.datos.id_mantenimiento)
-                .localeCompare(
-                    texto(b.datos.id_mantenimiento),
-                    "es",
-                    { numeric: true }
-                )
+            orden(a).localeCompare(
+                orden(b),
+                "es",
+                { numeric: true }
+            )
         )
         .at(-1);
 }
@@ -223,10 +232,14 @@ function completarResumen(
     requerimiento.idTramite =
         dt?.idTramite ??
         requerimiento.listado.find(item => item.idTramite)?.idTramite ??
+        cq?.idTramite ??
         "";
 
     requerimiento.idDemanda =
         texto(dt?.datos.id_demanda);
+
+    requerimiento.idHistorico =
+        texto(dt?.datos.id_historico);
 
     requerimiento.caso =
         requerimiento.listado
@@ -446,6 +459,25 @@ export function consolidarRequerimientos(
     for (const registro of activos) {
 
         if (registro.codigoFuente !== "CQ") {
+            continue;
+        }
+
+        /*
+         * El reporte nuevo trae el trámite: si DT o el Listado
+         * tienen ese trámite, se cruza directamente con él.
+         */
+        const porSuTramite =
+            registro.idTramite
+                ? porTramite.get(registro.idTramite)
+                : undefined;
+
+        if (porSuTramite?.length) {
+            for (const destino of porSuTramite) {
+                destino.clearQuest.push(
+                    registro
+                );
+            }
+
             continue;
         }
 

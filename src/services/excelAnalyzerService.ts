@@ -581,7 +581,7 @@ function construirRegistros(
 
     const camposIdentificacion =
         new Set([
-            ...configuracionFuente.camposClave,
+            ...configuracionFuente.camposClave.flatMap(campo => campo.split("+")),
             configuracionFuente.campoMantenimiento,
             configuracionFuente.campoTramite ?? "",
             configuracionFuente.campoNombre
