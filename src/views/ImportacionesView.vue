@@ -207,6 +207,73 @@ const puedeActualizar =
     });
 
 
+/*
+ * Barra fija al pie con la acción principal. El análisis y la
+ * vista previa son largos, y sin ella el botón queda muy abajo.
+ */
+const barraAccion =
+    computed(() => {
+
+      if (
+          !analisis.value ||
+          cargando.value ||
+          comparando.value
+      ) {
+        return null;
+      }
+
+      if (analisis.value.fuente === "DESCONOCIDA") {
+        return {
+          tipo: "bloqueado" as const,
+          texto: "No se reconoció la fuente del archivo. Revisa que sea el Excel de Demanda Táctica, ClearQuest o Listado."
+        };
+      }
+
+      if (!analisisValido.value) {
+        return {
+          tipo: "bloqueado" as const,
+          texto: "El archivo tiene observaciones de validación. Corrígelas en el Excel y vuelve a cargarlo."
+        };
+      }
+
+      if (!baselineExistente.value) {
+        return {
+          tipo: "baseline" as const,
+          texto: `${etiquetaFuente.value} · ${analisis.value.totalRegistros} registros. Será la base inicial de esta fuente.`
+        };
+      }
+
+      if (!comparacion.value) {
+        return null;
+      }
+
+      const r =
+          comparacion.value.resumen;
+
+      const cuenta = (n: number, palabra: string) =>
+          `${n} ${palabra}${n === 1 ? "" : "s"}`;
+
+      const partes = [
+        cuenta(r.nuevos, "nuevo"),
+        cuenta(r.modificados, "modificado"),
+        ...(r.reactivados ? [cuenta(r.reactivados, "reactivado")] : []),
+        cuenta(r.inactivos, "inactivo")
+      ];
+
+      return {
+        tipo: "actualizacion" as const,
+        texto: `${etiquetaFuente.value} · ${partes.join(", ")}. ${r.sinCambios} sin cambios.`
+      };
+    });
+
+
+function verDetalleAccion() {
+  document
+      .querySelector(".update-panel, .baseline-card")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
 const tamanoArchivo =
     computed(() => {
 
@@ -2030,6 +2097,91 @@ async function confirmarActualizacion() {
       </div>
 
     </template>
+
+
+    <!-- =====================================================
+         BARRA DE ACCIÓN (fija al pie de la pantalla)
+         ===================================================== -->
+
+    <div
+        v-if="barraAccion"
+        class="action-bar"
+        :class="barraAccion.tipo"
+        role="region"
+        aria-label="Acción de importación"
+    >
+
+      <i
+          class="action-bar-icon"
+          :class="
+          barraAccion.tipo === 'bloqueado'
+            ? 'pi pi-exclamation-triangle'
+            : 'pi pi-file-excel'
+        "
+      />
+
+      <span class="action-bar-text">
+        {{ barraAccion.texto }}
+      </span>
+
+      <button
+          v-if="barraAccion.tipo !== 'bloqueado'"
+          class="link-button"
+          type="button"
+          @click="verDetalleAccion"
+      >
+        Ver detalle
+      </button>
+
+      <button
+          v-if="barraAccion.tipo === 'baseline'"
+          class="primary-button"
+          :disabled="!puedeCrearBaseline"
+          @click="guardarComoBaseline"
+      >
+        <i
+            :class="
+            guardando
+              ? 'pi pi-spin pi-spinner'
+              : baselineGuardado
+                ? 'pi pi-check'
+                : 'pi pi-cloud-upload'
+          "
+        />
+        {{
+          guardando
+              ? "Guardando..."
+              : baselineGuardado
+                  ? "Base inicial creada"
+                  : "Establecer base inicial"
+        }}
+      </button>
+
+      <button
+          v-if="barraAccion.tipo === 'actualizacion'"
+          class="primary-button"
+          :disabled="!puedeActualizar"
+          @click="confirmarActualizacion"
+      >
+        <i
+            :class="
+            actualizando
+              ? 'pi pi-spin pi-spinner'
+              : actualizacionAplicada
+                ? 'pi pi-check'
+                : 'pi pi-cloud-upload'
+          "
+        />
+        {{
+          actualizando
+              ? "Actualizando..."
+              : actualizacionAplicada
+                  ? "Actualización aplicada"
+                  : "Confirmar actualización"
+        }}
+      </button>
+
+    </div>
 
     <div class="history-panel">
       <div class="history-header">
@@ -4027,6 +4179,58 @@ tbody tr:last-child td {
       var(--pi-text-muted);
 
   font-size: 8px;
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--pi-border);
+  border-radius: var(--pi-radius-lg);
+  background: var(--pi-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.action-bar.bloqueado {
+  border-color: var(--pi-warning);
+  background: var(--pi-warning-soft);
+}
+
+.action-bar-icon {
+  color: var(--pi-primary);
+  font-size: 16px;
+}
+
+.action-bar.bloqueado .action-bar-icon {
+  color: var(--pi-warning);
+}
+
+.action-bar-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--pi-text);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.link-button {
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--pi-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.action-bar .primary-button {
+  min-height: 34px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .primary-button {
