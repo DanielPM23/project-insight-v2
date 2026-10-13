@@ -52,7 +52,19 @@ export interface Requerimiento {
     idHistorico: string;
 
     nombre: string;
+
+    /*
+     * Estado principal: el de DT y, si no está en DT, el del
+     * Listado o el de ClearQuest.
+     */
     estado: string;
+
+    /*
+     * Estado propio del Listado. Se muestra aparte porque, si el
+     * requerimiento está en DT, el estado principal es el de DT.
+     */
+    estadoListado: string;
+
     responsable: string;
     aplicacion: string;
     gerencia: string;
@@ -170,6 +182,7 @@ function crearRequerimiento(
         idHistorico: "",
         nombre: "",
         estado: "",
+        estadoListado: "",
         responsable: "",
         aplicacion: "",
         gerencia: "",
@@ -257,6 +270,15 @@ function completarResumen(
         ls?.estado ||
         cq?.estado ||
         "";
+
+    requerimiento.estadoListado =
+        Array.from(
+            new Set(
+                requerimiento.listado
+                    .map(item => item.estado)
+                    .filter(Boolean)
+            )
+        ).join(" / ");
 
     requerimiento.responsable =
         texto(dt?.datos.responsable_dt) ||

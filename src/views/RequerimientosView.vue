@@ -150,6 +150,7 @@ const FUENTES_FILTRO: {
  */
 type CampoFiltro =
     "estado" |
+    "estadoListado" |
     "categoria" |
     "recurso" |
     "responsable" |
@@ -163,6 +164,7 @@ const FILTROS: {
   orden: "cantidad" | "valor";
 }[] = [
   { campo: "estado", nombre: "Estado", orden: "cantidad" },
+  { campo: "estadoListado", nombre: "Estado Listado", orden: "cantidad" },
   { campo: "categoria", nombre: "Categoría", orden: "cantidad" },
   { campo: "recurso", nombre: "Recurso", orden: "cantidad" },
   { campo: "responsable", nombre: "Responsable", orden: "cantidad" },
@@ -175,6 +177,7 @@ const FILTROS: {
 function filtrosVacios(): Record<CampoFiltro, string[]> {
   return {
     estado: [],
+    estadoListado: [],
     categoria: [],
     recurso: [],
     responsable: [],
@@ -385,6 +388,7 @@ const requerimientosFiltrados =
           item.caso,
           item.nombre,
           item.estado,
+          item.estadoListado,
           item.recurso,
           item.categoria,
           item.responsable,
@@ -418,6 +422,7 @@ const COLUMNAS: ColumnaTabla[] = [
   { campo: "idDemanda", nombre: "ID Demanda / Caso", ancho: "8.5rem" },
   { campo: "fuentes", nombre: "Fuentes", ancho: "8rem" },
   { campo: "estado", nombre: "Estado", ancho: "13rem" },
+  { campo: "estadoListado", nombre: "Estado Listado", ancho: "11rem" },
   { campo: "categoria", nombre: "Categoría", ancho: "8.5rem" },
   { campo: "recurso", nombre: "Recurso", ancho: "9rem" },
   { campo: "responsable", nombre: "Responsable / Analista", ancho: "12rem" },
@@ -441,7 +446,16 @@ const CLAVE_PREFERENCIAS =
 interface PreferenciasTabla {
   columnas: string[];
   filas: number;
+
+  // Columnas que existían al guardar: las nuevas se muestran según su valor por defecto.
+  conocidas: string[];
 }
+
+/*
+ * Columnas anteriores a que se guardara "conocidas".
+ */
+const COLUMNAS_SIN_REGISTRO =
+    ["idDemanda", "fuentes", "estado", "categoria", "recurso", "responsable", "aplicacion", "idTramite", "gerencia", "anio"];
 
 function leerPreferencias(): Partial<PreferenciasTabla> {
   try {
@@ -457,7 +471,8 @@ const preferencias =
 const columnasVisibles =
     ref<ColumnaTabla[]>(
         COLUMNAS.filter(columna =>
-            preferencias.columnas
+            preferencias.columnas &&
+            (preferencias.conocidas ?? COLUMNAS_SIN_REGISTRO).includes(columna.campo)
                 ? preferencias.columnas.includes(columna.campo)
                 : !OCULTAS_POR_DEFECTO.includes(columna.campo)
         )
@@ -474,7 +489,8 @@ watch(
             CLAVE_PREFERENCIAS,
             JSON.stringify({
               columnas: columnasVisibles.value.map(columna => columna.campo),
-              filas: filasPorPagina.value
+              filas: filasPorPagina.value,
+              conocidas: COLUMNAS.map(columna => columna.campo)
             } satisfies PreferenciasTabla)
         );
       } catch {
@@ -890,6 +906,14 @@ function exportarCSV() {
               />
 
               <Tag
+                  v-else-if="columna.campo === 'estadoListado' && data.estadoListado"
+                  v-tooltip.top="data.estadoListado"
+                  :value="data.estadoListado"
+                  :severity="severidadEstado(data.estadoListado)"
+                  class="cell-tag"
+              />
+
+              <Tag
                   v-else-if="columna.campo === 'categoria' && data.categoria"
                   :value="data.categoria"
                   :severity="severidadCategoria(data.categoria)"
@@ -925,7 +949,7 @@ function exportarCSV() {
               </span>
 
               <span
-                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
+                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'estadoListado', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
                   class="cell-text"
                   :title="String(data[columna.campo])"
               >
