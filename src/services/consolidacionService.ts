@@ -21,7 +21,9 @@ import type {
  *    de DT con el mismo trámite; si no tiene trámite o
  *    no hay coincidencia, a los que tengan su mismo
  *    mantenimiento. Si no encaja con ninguno, es un
- *    requerimiento propio.
+ *    requerimiento propio. Cada caso se ve en su propia
+ *    fila: si el requerimiento ya tiene un caso, el
+ *    siguiente va en una copia con los mismos datos de DT.
  *
  * 3. Las actividades de ClearQuest se agrupan por
  *    mantenimiento (2024-M0243-A001 → 2024-M0243; los
@@ -98,6 +100,13 @@ export interface Requerimiento {
      * el mismo mantenimiento.
      */
     compartenMantenimiento: number;
+
+    /*
+     * Id del requerimiento de DT del que esta fila es copia
+     * porque comparte trámite o mantenimiento con otro caso
+     * del Listado. Vacío en el resto.
+     */
+    copiaDe: string;
 
     alertas: string[];
 }
@@ -194,6 +203,7 @@ function crearRequerimiento(
         listado: [],
         clearQuest: [],
         compartenMantenimiento: 0,
+        copiaDe: "",
         alertas: []
     };
 }
@@ -379,6 +389,11 @@ export function consolidarRequerimientos(
     // 2. LISTADO
     // =====================================================
 
+    const pendientesDeIndice: {
+        requerimiento: Requerimiento;
+        registro: RegistroFuente;
+    }[] = [];
+
     for (const registro of activos) {
 
         if (registro.codigoFuente !== "LS") {
@@ -401,38 +416,66 @@ export function consolidarRequerimientos(
         }
 
 
-        if (destinos.length === 0) {
+        /*
+         * Los casos que comparten trámite o mantenimiento con un
+         * caso anterior van en su propia fila. Se indexan al
+         * terminar el Listado para que los casos siguientes no
+         * se crucen con ellas.
+         */
+        const conCaso =
+            destinos.filter(
+                destino =>
+                    destino.listado.length > 0
+            );
 
-            const requerimiento =
+        const libres =
+            destinos.filter(
+                destino =>
+                    destino.listado.length === 0
+            );
+
+        const nuevos: Requerimiento[] = [];
+
+        for (const base of conCaso) {
+            if (!base.demandaTactica) {
+                continue;
+            }
+
+            const copia =
                 crearRequerimiento(
-                    `LS:${registro.clave}`
+                    `${base.id}|LS:${registro.clave}`
                 );
 
-            requerimiento.listado.push(
+            copia.copiaDe =
+                base.id;
+
+            copia.demandaTactica =
+                base.demandaTactica;
+
+            nuevos.push(copia);
+        }
+
+        if (
+            destinos.length === 0 ||
+            (libres.length === 0 && nuevos.length === 0)
+        ) {
+            nuevos.push(
+                crearRequerimiento(
+                    `LS:${registro.clave}`
+                )
+            );
+        }
+
+        for (const nuevo of nuevos) {
+            requerimientos.push(nuevo);
+            pendientesDeIndice.push({
+                requerimiento: nuevo,
                 registro
-            );
-
-            requerimientos.push(
-                requerimiento
-            );
-
-            agregarAIndice(
-                porTramite,
-                registro.idTramite,
-                requerimiento
-            );
-
-            agregarAIndice(
-                porMantenimiento,
-                registro.idMantenimiento,
-                requerimiento
-            );
-
-            continue;
+            });
         }
 
 
-        for (const destino of destinos) {
+        for (const destino of [...libres, ...nuevos]) {
 
             destino.listado.push(
                 registro
@@ -459,7 +502,8 @@ export function consolidarRequerimientos(
              */
             if (
                 registro.idMantenimiento &&
-                !mantenimientoDt
+                !mantenimientoDt &&
+                !nuevos.includes(destino)
             ) {
                 agregarAIndice(
                     porMantenimiento,
@@ -468,6 +512,23 @@ export function consolidarRequerimientos(
                 );
             }
         }
+    }
+
+    for (const { requerimiento, registro } of pendientesDeIndice) {
+        const dt =
+            requerimiento.demandaTactica;
+
+        agregarAIndice(
+            porTramite,
+            dt ? dt.idTramite : registro.idTramite,
+            requerimiento
+        );
+
+        agregarAIndice(
+            porMantenimiento,
+            dt?.idMantenimiento ?? registro.idMantenimiento,
+            requerimiento
+        );
     }
 
 

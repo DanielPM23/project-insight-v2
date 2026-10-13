@@ -74,9 +74,23 @@ export const useAlertasStore = defineStore("alertas", () => {
         )
     );
 
-    const porRequerimiento = computed(
-        () => new Map(alertas.value.map(alerta => [alerta.idRequerimiento, alerta]))
-    );
+    /*
+     * Las copias por casos del Listado muestran la alerta
+     * del requerimiento de DT del que salen.
+     */
+    const porRequerimiento = computed(() => {
+        const mapa = new Map(alertas.value.map(alerta => [alerta.idRequerimiento, alerta]));
+
+        for (const item of requerimientos.value) {
+            const alerta = item.copiaDe ? mapa.get(item.copiaDe) : undefined;
+
+            if (alerta) {
+                mapa.set(item.id, alerta);
+            }
+        }
+
+        return mapa;
+    });
 
     const conteo = computed(() => {
         const resultado: Record<NivelAlerta | "MODIFICADA", number> = {
