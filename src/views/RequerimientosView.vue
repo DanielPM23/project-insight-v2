@@ -149,6 +149,8 @@ const FUENTES_FILTRO: {
  * el dashboard (?estado=...).
  */
 type CampoFiltro =
+    "cobertura" |
+    "tipoMatch" |
     "estado" |
     "estadoListado" |
     "categoria" |
@@ -163,6 +165,8 @@ const FILTROS: {
   nombre: string;
   orden: "cantidad" | "valor";
 }[] = [
+  { campo: "cobertura", nombre: "Cobertura", orden: "cantidad" },
+  { campo: "tipoMatch", nombre: "Tipo de Match", orden: "cantidad" },
   { campo: "estado", nombre: "Estado", orden: "cantidad" },
   { campo: "estadoListado", nombre: "Estado Listado", orden: "cantidad" },
   { campo: "categoria", nombre: "Categoría", orden: "cantidad" },
@@ -176,6 +180,8 @@ const FILTROS: {
 
 function filtrosVacios(): Record<CampoFiltro, string[]> {
   return {
+    cobertura: [],
+    tipoMatch: [],
     estado: [],
     estadoListado: [],
     categoria: [],
@@ -421,6 +427,7 @@ const COLUMNAS: ColumnaTabla[] = [
   { campo: "idHistorico", nombre: "ID Histórico", ancho: "7rem" },
   { campo: "idDemanda", nombre: "ID Demanda / Caso", ancho: "8.5rem" },
   { campo: "fuentes", nombre: "Fuentes", ancho: "8rem" },
+  { campo: "tipoMatch", nombre: "Tipo de Match", ancho: "12rem" },
   { campo: "estado", nombre: "Estado", ancho: "13rem" },
   { campo: "estadoListado", nombre: "Estado Listado", ancho: "11rem" },
   { campo: "categoria", nombre: "Categoría", ancho: "8.5rem" },
@@ -549,6 +556,15 @@ function severidadEstado(
   if (/stand|suspend|pospuest|observ|pendiente|espera/.test(texto)) return "warn";
   if (/desarroll|proceso|iniciad|asignad|prueba|qa|certific|análisis|analisis/.test(texto)) return "info";
 
+  return "secondary";
+}
+
+
+function severidadMatch(
+    tipo: string
+): "success" | "info" | "secondary" {
+  if (tipo === "Match por ID Mantenimiento") return "success";
+  if (tipo === "Match por ID Trámite") return "info";
   return "secondary";
 }
 
@@ -914,6 +930,14 @@ function exportarCSV() {
               />
 
               <Tag
+                  v-else-if="columna.campo === 'tipoMatch' && data.tipoMatch"
+                  v-tooltip.top="data.detalleMatch || 'Aparece en un solo archivo'"
+                  :value="data.tipoMatch"
+                  :severity="severidadMatch(data.tipoMatch)"
+                  class="cell-tag"
+              />
+
+              <Tag
                   v-else-if="columna.campo === 'categoria' && data.categoria"
                   :value="data.categoria"
                   :severity="severidadCategoria(data.categoria)"
@@ -949,7 +973,7 @@ function exportarCSV() {
               </span>
 
               <span
-                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'estadoListado', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
+                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'estadoListado', 'tipoMatch', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
                   class="cell-text"
                   :title="String(data[columna.campo])"
               >
@@ -1091,7 +1115,7 @@ function exportarCSV() {
 
 .filters-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
@@ -1099,10 +1123,10 @@ function exportarCSV() {
   background: var(--pi-surface-soft);
 }
 
-/* En pantallas anchas los filtros encogen para caber en una sola fila. */
+/* Los filtros encogen hasta que su nombre se lee completo; después pasan a otra fila. */
 .filter-select {
-  flex: 1 1 128px;
-  min-width: 96px;
+  flex: 1 1 140px;
+  min-width: 132px;
   max-width: 170px;
 }
 

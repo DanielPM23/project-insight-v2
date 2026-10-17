@@ -463,6 +463,13 @@ function claseFuente(
           </span>
 
           <span
+              class="status-badge"
+              :title="requerimiento.detalleMatch || 'Aparece en un solo archivo'"
+          >
+            {{ requerimiento.tipoMatch }}<template v-if="requerimiento.detalleMatch">: {{ requerimiento.detalleMatch }}</template>
+          </span>
+
+          <span
               v-if="requerimiento.estado"
               class="status-badge"
           >

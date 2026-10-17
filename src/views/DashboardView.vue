@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import {
   computed,
-  onMounted
+  onMounted,
+  ref
 } from "vue";
 
 import {
@@ -9,12 +10,14 @@ import {
 } from "pinia";
 
 import Button from "primevue/button";
+import MultiSelect from "primevue/multiselect";
 
 import {
   useRequerimientosStore
 } from "../stores/requerimientosStore";
 
 import BarList from "../components/dashboard/BarList.vue";
+import DonutChart from "../components/dashboard/DonutChart.vue";
 import AlertasResumen from "../components/alertas/AlertasResumen.vue";
 
 import {
@@ -24,6 +27,14 @@ import {
 import type {
   BarItem
 } from "../components/dashboard/BarList.vue";
+
+import type {
+  DonutItem
+} from "../components/dashboard/DonutChart.vue";
+
+import type {
+  RegistroFuente
+} from "../services/registrosFuente";
 
 import type {
   Requerimiento
@@ -54,13 +65,102 @@ onMounted(() => {
 
 
 // =========================================================
+// FILTROS
+// =========================================================
+
+/*
+ * Filtros del dashboard: se aplican a todos los
+ * indicadores y gráficos a la vez.
+ */
+type CampoFiltro =
+    "anio" |
+    "categoria" |
+    "gerencia" |
+    "tipoMatch";
+
+const FILTROS: {
+  campo: CampoFiltro;
+  nombre: string;
+}[] = [
+  { campo: "anio", nombre: "Año" },
+  { campo: "categoria", nombre: "Categoría" },
+  { campo: "gerencia", nombre: "Gerencia" },
+  { campo: "tipoMatch", nombre: "Tipo de Match" }
+];
+
+const filtros =
+    ref<Record<CampoFiltro, string[]>>({
+      anio: [],
+      categoria: [],
+      gerencia: [],
+      tipoMatch: []
+    });
+
+const opcionesPorFiltro =
+    computed(() =>
+        Object.fromEntries(
+            FILTROS.map(filtro => {
+              const conteo =
+                  new Map<string, number>();
+
+              for (const item of requerimientos.value) {
+                const valor =
+                    item[filtro.campo];
+
+                if (valor) {
+                  conteo.set(valor, (conteo.get(valor) ?? 0) + 1);
+                }
+              }
+
+              const opciones =
+                  Array.from(conteo)
+                      .sort((a, b) =>
+                          filtro.campo === "anio"
+                              ? b[0].localeCompare(a[0], "es", { numeric: true })
+                              : b[1] - a[1]
+                      )
+                      .map(([valor, cantidad]) => ({
+                        valor,
+                        etiqueta: `${valor} (${cantidad})`
+                      }));
+
+              return [filtro.campo, opciones];
+            })
+        ) as Record<CampoFiltro, { valor: string; etiqueta: string }[]>
+    );
+
+const cantidadFiltros =
+    computed(() =>
+        FILTROS.filter(filtro => filtros.value[filtro.campo].length > 0).length
+    );
+
+function limpiarFiltros() {
+  for (const filtro of FILTROS) {
+    filtros.value[filtro.campo] = [];
+  }
+}
+
+const lista =
+    computed(() =>
+        requerimientos.value.filter(item =>
+            FILTROS.every(filtro => {
+              const valores =
+                  filtros.value[filtro.campo];
+
+              return valores.length === 0 || valores.includes(item[filtro.campo]);
+            })
+        )
+    );
+
+
+// =========================================================
 // INDICADORES
 // =========================================================
 
 function contar(
     filtro: (item: Requerimiento) => boolean
 ): number {
-  return requerimientos.value.filter(filtro).length;
+  return lista.value.filter(filtro).length;
 }
 
 
@@ -68,7 +168,7 @@ const indicadores =
     computed(() => [
       {
         titulo: "Total requerimientos",
-        valor: requerimientos.value.length,
+        valor: lista.value.length,
         detalle: "Vista consolidada",
         icono: "pi pi-database",
         clase: ""
@@ -149,37 +249,99 @@ function agrupar(
 
 const enDT =
     computed(() =>
-        requerimientos.value.filter(item => item.fuentes.includes("DT"))
+        lista.value.filter(item => item.fuentes.includes("DT"))
     );
 
 const enLS =
     computed(() =>
-        requerimientos.value.filter(item => item.fuentes.includes("LS"))
+        lista.value.filter(item => item.fuentes.includes("LS"))
     );
 
 
-const COMBINACIONES: {
-  etiqueta: string;
-  fuentes: CodigoFuente[];
-}[] = [
-  { etiqueta: "DT + Listado + CQ", fuentes: ["DT", "LS", "CQ"] },
-  { etiqueta: "DT + CQ", fuentes: ["DT", "CQ"] },
-  { etiqueta: "DT + Listado", fuentes: ["DT", "LS"] },
-  { etiqueta: "Solo DT", fuentes: ["DT"] },
-  { etiqueta: "Listado + CQ", fuentes: ["LS", "CQ"] },
-  { etiqueta: "Solo Listado", fuentes: ["LS"] },
-  { etiqueta: "Solo CQ", fuentes: ["CQ"] }
+/*
+ * Mismas etiquetas que Requerimiento.cobertura, en orden fijo.
+ */
+const COMBINACIONES = [
+  "DT + Listado + CQ",
+  "DT + CQ",
+  "DT + Listado",
+  "Solo DT",
+  "Listado + CQ",
+  "Solo Listado",
+  "Solo CQ"
 ];
 
 
 const cobertura =
     computed<BarItem[]>(() =>
-        COMBINACIONES.map(combinacion => ({
-          etiqueta: combinacion.etiqueta,
-          valor: contar(
-              item => item.fuentes.join() === combinacion.fuentes.join()
-          )
+        COMBINACIONES.map(etiqueta => ({
+          etiqueta,
+          valor: contar(item => item.cobertura === etiqueta),
+          to: {
+            name: "requerimientos",
+            query: { cobertura: etiqueta }
+          }
         }))
+    );
+
+
+const tiposMatch =
+    computed(() =>
+        agrupar(
+            lista.value,
+            item => item.tipoMatch,
+            "tipoMatch"
+        )
+    );
+
+
+/*
+ * Proyectos por responsable en cada fuente: cada fila del
+ * Excel cuenta una vez aunque aparezca en varios
+ * requerimientos.
+ */
+function porResponsable(
+    registrosDe: (item: Requerimiento) => (RegistroFuente | null)[],
+    campo: string
+): DonutItem[] {
+  const vistos =
+      new Set<string>();
+
+  const conteo =
+      new Map<string, number>();
+
+  for (const item of lista.value) {
+    for (const registro of registrosDe(item)) {
+      if (!registro || vistos.has(registro.idDocumento)) {
+        continue;
+      }
+
+      vistos.add(registro.idDocumento);
+
+      const responsable =
+          String(registro.datos[campo] ?? "").trim() || "Sin asignar";
+
+      conteo.set(responsable, (conteo.get(responsable) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(conteo, ([etiqueta, valor]) => ({ etiqueta, valor }));
+}
+
+
+const responsablesDT =
+    computed(() =>
+        porResponsable(item => [item.demandaTactica], "responsable_dt")
+    );
+
+const responsablesLS =
+    computed(() =>
+        porResponsable(item => item.listado, "analista_bn")
+    );
+
+const responsablesCQ =
+    computed(() =>
+        porResponsable(item => item.clearQuest, "analista_cq")
     );
 
 
@@ -229,7 +391,7 @@ const porRecurso =
 const porGerencia =
     computed(() =>
         agrupar(
-            requerimientos.value,
+            lista.value,
             item => item.gerencia,
             "gerencia"
         )
@@ -249,7 +411,7 @@ const actividadesCQ =
       const conteo =
           new Map<string, number>();
 
-      for (const item of requerimientos.value) {
+      for (const item of lista.value) {
         for (const actividad of item.clearQuest) {
           if (vistas.has(actividad.idDocumento)) {
             continue;
@@ -299,6 +461,36 @@ const actividadesCQ =
     </div>
 
 
+    <div class="filters-row">
+      <MultiSelect
+          v-for="filtro in FILTROS"
+          :key="filtro.campo"
+          v-model="filtros[filtro.campo]"
+          :options="opcionesPorFiltro[filtro.campo]"
+          option-label="etiqueta"
+          option-value="valor"
+          :placeholder="filtro.nombre"
+          :selected-items-label="`${filtro.nombre} ({0})`"
+          :max-selected-labels="1"
+          filter
+          show-clear
+          size="small"
+          class="filter-select"
+          :class="{ active: filtros[filtro.campo].length > 0 }"
+          :aria-label="`Filtrar el dashboard por ${filtro.nombre.toLowerCase()}`"
+      />
+
+      <Button
+          :label="cantidadFiltros > 0 ? `Limpiar filtros (${cantidadFiltros})` : 'Limpiar filtros'"
+          icon="pi pi-filter-slash"
+          severity="secondary"
+          text
+          size="small"
+          :disabled="cantidadFiltros === 0"
+          @click="limpiarFiltros"
+      />
+    </div>
+
     <div class="grid-metricas">
       <div
           v-for="indicador in indicadores"
@@ -322,12 +514,40 @@ const actividadesCQ =
 
     <AlertasResumen class="alertas" />
 
+    <div class="grid-responsables">
+      <DonutChart
+          titulo="ClearQuest por responsable"
+          descripcion="Registros de ClearQuest por responsable."
+          :items="responsablesCQ"
+      />
+
+      <DonutChart
+          titulo="Demanda Táctica por responsable"
+          descripcion="Filas de DT por responsable."
+          :items="responsablesDT"
+      />
+
+      <DonutChart
+          titulo="Listado por analista"
+          descripcion="Casos del Listado por Analista BN."
+          unidad="casos"
+          :items="responsablesLS"
+      />
+    </div>
+
     <div class="dashboard-grid">
 
       <BarList
           titulo="Cobertura entre fuentes"
           descripcion="En qué Excels aparece cada requerimiento."
           :items="cobertura"
+          color="#16a34a"
+      />
+
+      <BarList
+          titulo="Tipo de match"
+          descripcion="Cómo se cruzaron las fuentes: por ID Mantenimiento, por ID Trámite o sin match."
+          :items="tiposMatch"
           color="#16a34a"
       />
 
@@ -475,6 +695,36 @@ const actividadesCQ =
 
 .alertas {
   margin-bottom: 18px;
+}
+
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.filter-select {
+  width: 170px;
+}
+
+.filter-select.active {
+  border-color: var(--pi-primary);
+  background: var(--pi-primary-soft);
+}
+
+.grid-responsables {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 1250px) {
+  .grid-responsables {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dashboard-grid {

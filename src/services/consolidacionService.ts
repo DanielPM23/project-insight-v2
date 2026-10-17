@@ -17,24 +17,40 @@ import type {
  *    Varios requerimientos pueden compartir mantenimiento
  *    (2026-M0013 tiene 4 trámites distintos).
  *
- * 2. Cada caso del Listado se une a los requerimientos
- *    de DT con el mismo trámite; si no tiene trámite o
- *    no hay coincidencia, a los que tengan su mismo
- *    mantenimiento. Si no encaja con ninguno, es un
- *    requerimiento propio. Cada caso se ve en su propia
- *    fila: si el requerimiento ya tiene un caso, el
- *    siguiente va en una copia con los mismos datos de DT.
+ * 2. El cruce busca primero por ID Mantenimiento y, si el
+ *    registro no lo tiene o nadie más lo tiene, por ID
+ *    Trámite. Ambos se comparan exactos tras normalizarlos
+ *    (utils/identificadores). Si el mantenimiento coincide
+ *    con varios requerimientos y el trámite señala a uno de
+ *    ellos, se une solo a ese; el trámite nunca une con un
+ *    requerimiento de otro mantenimiento si hubo match por
+ *    mantenimiento.
  *
- * 3. Las actividades de ClearQuest se agrupan por
- *    mantenimiento (2024-M0243-A001 → 2024-M0243; los
- *    proyectos con P cuentan igual) y se unen a todos
- *    los requerimientos con ese mantenimiento. Si no
- *    encajan con ninguno, el mantenimiento es un
- *    requerimiento propio.
+ * 3. Cada caso del Listado se une así a los requerimientos
+ *    de DT. Si no encaja con ninguno, es un requerimiento
+ *    propio. Cada caso se ve en su propia fila: si el
+ *    requerimiento ya tiene un caso, el siguiente va en una
+ *    copia con los mismos datos de DT.
  *
- * 4. Lo que no tiene mantenimiento ni trámite se carga
+ * 4. Cada registro de ClearQuest se une igual a DT o al
+ *    Listado (2024-M0243-A001 → 2024-M0243; los proyectos
+ *    con P cuentan igual). Los que no encajan se agrupan
+ *    por mantenimiento en un requerimiento propio.
+ *
+ * 5. Lo que no tiene mantenimiento ni trámite se carga
  *    igual, identificado por su clave propia.
  */
+
+export type TipoMatch =
+    | "Match por ID Mantenimiento"
+    | "Match por ID Trámite"
+    | "Sin Match";
+
+interface Vinculo {
+    fuente: "LS" | "CQ";
+    tipo: "MANTENIMIENTO" | "TRAMITE";
+}
+
 export interface Requerimiento {
     id: string;
 
@@ -107,6 +123,22 @@ export interface Requerimiento {
      * del Listado. Vacío en el resto.
      */
     copiaDe: string;
+
+    /*
+     * Cómo se unieron las fuentes: por mantenimiento si
+     * todas se cruzaron por mantenimiento, por trámite si
+     * alguna necesitó el trámite, sin match si solo hay una
+     * fuente. El detalle dice qué fuente usó cada ID.
+     */
+    tipoMatch: TipoMatch;
+    detalleMatch: string;
+    vinculos: Vinculo[];
+
+    /*
+     * En qué archivos aparece: "DT + Listado + CQ",
+     * "DT + CQ"... "Solo CQ".
+     */
+    cobertura: string;
 
     alertas: string[];
 }
@@ -204,6 +236,10 @@ function crearRequerimiento(
         clearQuest: [],
         compartenMantenimiento: 0,
         copiaDe: "",
+        tipoMatch: "Sin Match",
+        cobertura: "",
+        detalleMatch: "",
+        vinculos: [],
         alertas: []
     };
 }
@@ -326,6 +362,120 @@ function completarResumen(
             codigo =>
                 fuentes.has(codigo)
         );
+
+    completarMatch(
+        requerimiento
+    );
+}
+
+
+const NOMBRE_FUENTE_MATCH: Record<Vinculo["fuente"], string> = {
+    LS: "Listado",
+    CQ: "ClearQuest"
+};
+
+
+function completarMatch(
+    requerimiento: Requerimiento
+) {
+    const nombres =
+        requerimiento.fuentes.map(fuente => fuente === "LS" ? "Listado" : fuente);
+
+    requerimiento.cobertura =
+        nombres.length === 1
+            ? `Solo ${nombres[0]}`
+            : nombres.join(" + ");
+
+    if (requerimiento.fuentes.length < 2) {
+        requerimiento.tipoMatch = "Sin Match";
+        requerimiento.detalleMatch = "";
+        return;
+    }
+
+    /*
+     * Un requerimiento sin DT une Listado y ClearQuest
+     * a través del caso del Listado.
+     */
+    const vinculos =
+        requerimiento.vinculos;
+
+    const tipos =
+        new Set(vinculos.map(vinculo => vinculo.tipo));
+
+    requerimiento.tipoMatch =
+        tipos.has("TRAMITE")
+            ? "Match por ID Trámite"
+            : "Match por ID Mantenimiento";
+
+    requerimiento.detalleMatch =
+        (["LS", "CQ"] as const)
+            .map(fuente => {
+                const propios =
+                    new Set(
+                        vinculos
+                            .filter(vinculo => vinculo.fuente === fuente)
+                            .map(vinculo => vinculo.tipo === "TRAMITE" ? "trámite" : "mantenimiento")
+                    );
+
+                return propios.size
+                    ? `${NOMBRE_FUENTE_MATCH[fuente]} por ${Array.from(propios).join(" y ")}`
+                    : "";
+            })
+            .filter(Boolean)
+            .join(", ");
+}
+
+
+function tramiteDe(
+    requerimiento: Requerimiento
+): string | null {
+    return requerimiento.demandaTactica
+        ? requerimiento.demandaTactica.idTramite
+        : requerimiento.listado[0]?.idTramite ?? null;
+}
+
+
+/*
+ * Requerimientos con los que se cruza un registro:
+ * primero por mantenimiento y, si no hay, por trámite.
+ */
+function buscarDestinos(
+    registro: RegistroFuente,
+    porMantenimiento: Map<string, Requerimiento[]>,
+    porTramite: Map<string, Requerimiento[]>
+): {
+    destinos: Requerimiento[];
+    tipo: Vinculo["tipo"] | null;
+} {
+    const conMantenimiento =
+        registro.idMantenimiento
+            ? Array.from(new Set(porMantenimiento.get(registro.idMantenimiento) ?? []))
+            : [];
+
+    if (conMantenimiento.length > 0) {
+        const mismoTramite =
+            registro.idTramite && conMantenimiento.length > 1
+                ? conMantenimiento.filter(
+                    destino =>
+                        tramiteDe(destino) === registro.idTramite
+                )
+                : [];
+
+        return {
+            destinos: mismoTramite.length ? mismoTramite : conMantenimiento,
+            tipo: "MANTENIMIENTO"
+        };
+    }
+
+    const conTramite =
+        registro.idTramite
+            ? Array.from(new Set(porTramite.get(registro.idTramite) ?? []))
+            : [];
+
+    return {
+        destinos: conTramite,
+        tipo: conTramite.length ? "TRAMITE" : null
+    };
 }
 
 
@@ -400,20 +550,14 @@ export function consolidarRequerimientos(
             continue;
         }
 
-        let destinos =
-            (registro.idTramite &&
-                porTramite.get(registro.idTramite)) ||
-            [];
-
-        if (
-            destinos.length === 0 &&
-            registro.idMantenimiento
-        ) {
-            destinos =
-                porMantenimiento.get(
-                    registro.idMantenimiento
-                ) ?? [];
-        }
+        const {
+            destinos,
+            tipo
+        } = buscarDestinos(
+            registro,
+            porMantenimiento,
+            porTramite
+        );
 
 
         /*
@@ -481,6 +625,13 @@ export function consolidarRequerimientos(
                 registro
             );
 
+            if (destino.demandaTactica && tipo) {
+                destino.vinculos.push({
+                    fuente: "LS",
+                    tipo
+                });
+            }
+
             const mantenimientoDt =
                 destino.demandaTactica?.idMantenimiento;
 
@@ -536,7 +687,7 @@ export function consolidarRequerimientos(
     // 3. CLEARQUEST
     // =====================================================
 
-    const actividadesPorMantenimiento =
+    const sinCruce =
         new Map<string, RegistroFuente[]>();
 
     for (const registro of activos) {
@@ -545,20 +696,25 @@ export function consolidarRequerimientos(
             continue;
         }
 
-        /*
-         * El reporte nuevo trae el trámite: si DT o el Listado
-         * tienen ese trámite, se cruza directamente con él.
-         */
-        const porSuTramite =
-            registro.idTramite
-                ? porTramite.get(registro.idTramite)
-                : undefined;
+        const {
+            destinos,
+            tipo
+        } = buscarDestinos(
+            registro,
+            porMantenimiento,
+            porTramite
+        );
 
-        if (porSuTramite?.length) {
-            for (const destino of porSuTramite) {
+        if (destinos.length > 0 && tipo) {
+            for (const destino of destinos) {
                 destino.clearQuest.push(
                     registro
                 );
+
+                destino.vinculos.push({
+                    fuente: "CQ",
+                    tipo
+                });
             }
 
             continue;
@@ -583,7 +739,7 @@ export function consolidarRequerimientos(
         }
 
         agregarAIndice(
-            actividadesPorMantenimiento,
+            sinCruce,
             registro.idMantenimiento,
             registro
         );
@@ -592,39 +748,21 @@ export function consolidarRequerimientos(
 
     for (
         const [mantenimiento, actividades]
-        of actividadesPorMantenimiento
+        of sinCruce
         ) {
 
-        const destinos =
-            new Set(
-                porMantenimiento.get(
-                    mantenimiento
-                ) ?? []
+        const requerimiento =
+            crearRequerimiento(
+                `CQ:${mantenimiento}`
             );
 
-        if (destinos.size === 0) {
+        requerimiento.clearQuest.push(
+            ...actividades
+        );
 
-            const requerimiento =
-                crearRequerimiento(
-                    `CQ:${mantenimiento}`
-                );
-
-            requerimiento.clearQuest.push(
-                ...actividades
-            );
-
-            requerimientos.push(
-                requerimiento
-            );
-
-            continue;
-        }
-
-        for (const destino of destinos) {
-            destino.clearQuest.push(
-                ...actividades
-            );
-        }
+        requerimientos.push(
+            requerimiento
+        );
     }
 
 

@@ -4,6 +4,8 @@
  * Mantenimiento / proyecto: 2024-M0243, 2024-P0481
  *   - ClearQuest agrega la actividad: 2024-M0243-A001
  *   - Algunos Excels traen espacios: "2026- M0340"
+ *   - Se quitan caracteres invisibles (espacio de ancho
+ *     cero, BOM) y los guiones tipográficos pasan a "-"
  *
  * Trámite: 2026-T0337
  *
@@ -30,7 +32,10 @@ function compactar(
     }
 
     return String(valor)
+        .normalize("NFKC")
         .toUpperCase()
+        .replace(/[\u200B-\u200D\u2060\uFEFF\u00AD]/g, "")
+        .replace(/[\u2010-\u2015\u2212]/g, "-")
         .replace(/\s+/g, "");
 }
 
