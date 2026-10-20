@@ -6,6 +6,11 @@ import { storeToRefs } from "pinia";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import SelectButton from "primevue/selectbutton";
+import MultiSelect from "primevue/multiselect";
+import DatePicker from "primevue/datepicker";
+import IconField from "primevue/iconfield";
+import InputIcon from "primevue/inputicon";
+import InputText from "primevue/inputtext";
 import Button from "primevue/button";
 
 import AlertaTag from "../components/alertas/AlertaTag.vue";
@@ -22,7 +27,9 @@ import type {
 
 import { useAlertasStore } from "../stores/alertasStore";
 import { useAuthStore } from "../stores/authStore";
-import { formatearFecha } from "../utils/fechas";
+import { aDiaCalendario, formatearFecha } from "../utils/fechas";
+import { descargarCSV } from "../utils/csv";
+import type { ColumnaCSV } from "../utils/csv";
 
 
 const router = useRouter();
@@ -42,7 +49,13 @@ onMounted(() => store.cargar());
 
 type Filtro = NivelAlerta | "MODIFICADA";
 
-const filtros = ref<Filtro[]>(["VENCIDO", "VENCE_HOY", "PROXIMO"]);
+const FILTROS_POR_DEFECTO: Filtro[] = ["VENCIDO", "VENCE_HOY", "PROXIMO"];
+
+const filtros = ref<Filtro[]>([...FILTROS_POR_DEFECTO]);
+const busqueda = ref("");
+const filtroEstado = ref<string[]>([]);
+const filtroResponsable = ref<string[]>([]);
+const rangoFin = ref<(Date | null)[] | null>(null);
 
 const opciones = computed(() => [
   ...(Object.keys(NIVELES_ALERTA) as NivelAlerta[]).map(nivel => ({
@@ -62,16 +75,133 @@ const tarjetas = computed(() => [
   { nivel: "MODIFICADA", titulo: "Fecha modificada", valor: conteo.value.MODIFICADA, detalle: `En los últimos ${configuracion.value.diasFechaModificada} días`, icono: "pi pi-calendar-clock", clase: "modificada" }
 ] as const);
 
-const filas = computed(() =>
-    alertas.value.filter(alerta =>
-        filtros.value.length === 0 ||
-        (alerta.nivel !== null && filtros.value.includes(alerta.nivel)) ||
-        (alerta.fechaModificada !== null && filtros.value.includes("MODIFICADA"))
-    )
+
+function cumpleTipo(alerta: AlertaDesarrollo): boolean {
+  return filtros.value.length === 0 ||
+      (alerta.nivel !== null && filtros.value.includes(alerta.nivel)) ||
+      (alerta.fechaModificada !== null && filtros.value.includes("MODIFICADA"));
+}
+
+
+/*
+ * Estados y responsables de las alertas del tipo elegido,
+ * con cuántas tiene cada uno.
+ */
+function opcionesDe(campo: "estado" | "responsable") {
+  const cantidad = new Map<string, number>();
+
+  for (const alerta of alertas.value) {
+    if (alerta[campo] && cumpleTipo(alerta)) {
+      cantidad.set(alerta[campo], (cantidad.get(alerta[campo]) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(cantidad)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
+      .map(([valor, total]) => ({ valor, etiqueta: `${valor} (${total})` }));
+}
+
+const opcionesEstado = computed(() => opcionesDe("estado"));
+const opcionesResponsable = computed(() => opcionesDe("responsable"));
+
+const filas = computed(() => {
+  const termino = busqueda.value.trim().toLowerCase();
+  const desde = aDiaCalendario(rangoFin.value?.[0] ?? null);
+  const hasta = aDiaCalendario(rangoFin.value?.[1] ?? null) ?? desde;
+
+  return alertas.value.filter(alerta =>
+      cumpleTipo(alerta) &&
+      (filtroEstado.value.length === 0 || filtroEstado.value.includes(alerta.estado)) &&
+      (filtroResponsable.value.length === 0 || filtroResponsable.value.includes(alerta.responsable)) &&
+      (!desde || alerta.fechaFin >= desde) &&
+      (!hasta || alerta.fechaFin <= hasta) &&
+      (!termino || [alerta.idMantenimiento, alerta.idTramite, alerta.nombre, alerta.responsable, alerta.estado]
+          .some(texto => texto?.toLowerCase().includes(termino)))
+  );
+});
+
+const cantidadFiltros = computed(() =>
+    (filtros.value.length !== FILTROS_POR_DEFECTO.length || !FILTROS_POR_DEFECTO.every(filtro => filtros.value.includes(filtro)) ? 1 : 0) +
+    (busqueda.value.trim() ? 1 : 0) +
+    (filtroEstado.value.length > 0 ? 1 : 0) +
+    (filtroResponsable.value.length > 0 ? 1 : 0) +
+    (rangoFin.value?.[0] ? 1 : 0)
 );
 
+function limpiarFiltros() {
+  filtros.value = [...FILTROS_POR_DEFECTO];
+  busqueda.value = "";
+  filtroEstado.value = [];
+  filtroResponsable.value = [];
+  rangoFin.value = null;
+}
+
+/*
+ * Un clic en la tarjeta deja solo ese tipo; otro clic en
+ * la misma tarjeta vuelve a la vista por defecto.
+ */
 function soloNivel(nivel: Filtro) {
-  filtros.value = [nivel];
+  filtros.value = filtros.value.length === 1 && filtros.value[0] === nivel
+      ? [...FILTROS_POR_DEFECTO]
+      : [nivel];
+}
+
+
+// =========================================================
+// CSV
+// =========================================================
+
+/*
+ * El CSV lleva las filas filtradas en el mismo orden que
+ * la tabla.
+ */
+const campoOrden = ref<string | undefined>();
+const sentidoOrden = ref<number | undefined>();
+
+function filasOrdenadas(): AlertaDesarrollo[] {
+  const campo = campoOrden.value as keyof AlertaDesarrollo | undefined;
+  const sentido = sentidoOrden.value ?? 1;
+
+  if (!campo) {
+    return filas.value;
+  }
+
+  return [...filas.value].sort((a, b) => {
+    const x = a[campo];
+    const y = b[campo];
+
+    if (x == null || y == null) {
+      return x == null ? (y == null ? 0 : 1) : -1;
+    }
+
+    const resultado = typeof x === "string" && typeof y === "string"
+        ? x.localeCompare(y, "es", { numeric: true })
+        : Number(x) - Number(y);
+
+    return resultado * sentido;
+  });
+}
+
+const COLUMNAS_CSV: ColumnaCSV<AlertaDesarrollo>[] = [
+  { titulo: "Alerta", valor: a => (a.nivel ? NIVELES_ALERTA[a.nivel].nombre : "Desarrollo terminado") },
+  { titulo: "Fecha modificada", valor: a => (a.fechaModificada ? "Sí" : "No") },
+  { titulo: "Fin de desarrollo anterior", valor: a => formatearFecha(a.fechaModificada?.anterior ?? null) },
+  { titulo: "Fecha de la modificación", valor: a => formatearFecha(a.fechaModificada?.fechaCarga ?? null) },
+  { titulo: "ID Mantenimiento", valor: a => a.idMantenimiento },
+  { titulo: "ID Trámite", valor: a => a.idTramite },
+  { titulo: "Requerimiento", valor: a => a.nombre },
+  { titulo: "Fin de desarrollo", valor: a => formatearFecha(a.fechaFin) },
+  { titulo: "Días", valor: a => a.dias },
+  { titulo: "Plazo", valor: a => (a.nivel ? textoDias(a.dias) : "Desarrollo terminado") },
+  { titulo: "Estado", valor: a => a.estado },
+  { titulo: "Responsable", valor: a => a.responsable }
+];
+
+function exportarCSV() {
+  const hoy = new Date();
+  const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+
+  descargarCSV(`alertas-${fecha}`, COLUMNAS_CSV, filasOrdenadas());
 }
 
 function abrir(alerta: AlertaDesarrollo) {
@@ -128,15 +258,108 @@ function abrir(alerta: AlertaDesarrollo) {
             multiple
             size="small"
             class="filtros"
-            aria-label="Filtrar alertas"
+            aria-label="Filtrar por tipo de alerta"
         />
 
-        <RouterLink v-if="auth.esAdmin" :to="{ name: 'configuracion' }" class="cambiar-dias">
-          <i class="pi pi-cog" /> Cambiar los días
-        </RouterLink>
+        <div class="acciones">
+          <span class="conteo" aria-live="polite">
+            <strong>{{ filas.length }}</strong> de {{ alertas.length }} alertas
+          </span>
+
+          <RouterLink v-if="auth.esAdmin" :to="{ name: 'configuracion' }" class="cambiar-dias">
+            <i class="pi pi-cog" /> Cambiar los días
+          </RouterLink>
+
+          <Button
+              v-tooltip.bottom="'Descargar la tabla filtrada en CSV'"
+              icon="pi pi-download"
+              label="CSV"
+              severity="secondary"
+              outlined
+              size="small"
+              :disabled="filas.length === 0"
+              @click="exportarCSV"
+          />
+        </div>
+      </div>
+
+      <!-- Filtros combinables: se aplican todos a la vez. -->
+      <div class="fila-filtros">
+        <IconField class="busqueda">
+          <InputIcon class="pi pi-search" />
+          <InputText
+              v-model="busqueda"
+              type="search"
+              size="small"
+              placeholder="Buscar por ID, nombre, responsable..."
+              aria-label="Buscar alertas"
+              fluid
+          />
+        </IconField>
+
+        <MultiSelect
+            v-model="filtroEstado"
+            :options="opcionesEstado"
+            option-label="etiqueta"
+            option-value="valor"
+            placeholder="Estado"
+            selected-items-label="Estado ({0})"
+            :max-selected-labels="1"
+            filter
+            filter-placeholder="Buscar estado"
+            show-clear
+            size="small"
+            class="filtro"
+            :class="{ activo: filtroEstado.length > 0 }"
+            aria-label="Filtrar por estado"
+        />
+
+        <MultiSelect
+            v-model="filtroResponsable"
+            :options="opcionesResponsable"
+            option-label="etiqueta"
+            option-value="valor"
+            placeholder="Responsable"
+            selected-items-label="Responsable ({0})"
+            :max-selected-labels="1"
+            filter
+            filter-placeholder="Buscar responsable"
+            show-clear
+            size="small"
+            class="filtro"
+            :class="{ activo: filtroResponsable.length > 0 }"
+            aria-label="Filtrar por responsable"
+        />
+
+        <DatePicker
+            v-model="rangoFin"
+            selection-mode="range"
+            :manual-input="false"
+            date-format="dd/mm/yy"
+            placeholder="Fin de desarrollo"
+            show-button-bar
+            show-icon
+            icon-display="input"
+            size="small"
+            class="filtro filtro-fecha"
+            :class="{ activo: !!rangoFin?.[0] }"
+            aria-label="Filtrar por rango de fin de desarrollo"
+        />
+
+        <Button
+            :label="cantidadFiltros > 0 ? `Limpiar filtros (${cantidadFiltros})` : 'Limpiar filtros'"
+            icon="pi pi-filter-slash"
+            severity="secondary"
+            text
+            size="small"
+            :disabled="cantidadFiltros === 0"
+            @click="limpiarFiltros"
+        />
       </div>
 
       <DataTable
+          v-model:sort-field="campoOrden"
+          v-model:sort-order="sentidoOrden"
           :value="filas"
           :loading="cargando"
           data-key="idRequerimiento"
@@ -302,6 +525,52 @@ function abrir(alerta: AlertaDesarrollo) {
   margin-bottom: 12px;
 }
 
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.conteo {
+  color: var(--pi-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.conteo strong {
+  color: var(--pi-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.fila-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.busqueda {
+  flex: 1 1 240px;
+  max-width: 320px;
+}
+
+.filtro {
+  flex: 1 1 150px;
+  min-width: 140px;
+  max-width: 190px;
+}
+
+.filtro-fecha {
+  max-width: 220px;
+}
+
+.filtro.activo,
+.filtro.activo :deep(.p-inputtext) {
+  border-color: var(--pi-primary);
+  background: var(--pi-primary-soft);
+}
+
 .cambiar-dias {
   color: var(--pi-primary);
   font-size: 11px;
@@ -370,6 +639,12 @@ function abrir(alerta: AlertaDesarrollo) {
 @media (max-width: 600px) {
   .tarjetas {
     grid-template-columns: 1fr;
+  }
+
+  .busqueda,
+  .filtro {
+    flex: 1 1 100%;
+    max-width: none;
   }
 }
 </style>
