@@ -14,9 +14,9 @@
 <style scoped>
 .panel {
   padding: 24px;
-  background: white;
+  background: var(--pi-surface);
   border:
-      1px solid #e2e8f0;
+      1px solid var(--pi-border);
   border-radius: 12px;
 }
 
@@ -26,7 +26,7 @@ h2 {
 }
 
 p {
-  color: #64748b;
+  color: var(--pi-text-subtle);
   font-size: 13px;
 }
 </style>

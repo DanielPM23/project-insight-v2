@@ -72,7 +72,7 @@ const detalle = computed(() => {
 }
 
 .modificada {
-  color: #7c3aed;
+  color: var(--pi-purple);
   font-size: 13px;
 }
 </style>

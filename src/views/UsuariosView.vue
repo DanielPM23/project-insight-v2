@@ -447,7 +447,7 @@ td select {
 }
 
 .toggle.activo {
-  border-color: #bbf7d0;
+  border-color: var(--pi-success-border);
   background: var(--pi-success-soft);
   color: var(--pi-success);
 }

@@ -541,21 +541,21 @@ const actividadesCQ =
           titulo="Cobertura entre fuentes"
           descripcion="En qué Excels aparece cada requerimiento."
           :items="cobertura"
-          color="#16a34a"
+          color="var(--pi-success)"
       />
 
       <BarList
           titulo="Tipo de match"
           descripcion="Cómo se cruzaron las fuentes: por ID Mantenimiento, por ID Trámite o sin match."
           :items="tiposMatch"
-          color="#16a34a"
+          color="var(--pi-success)"
       />
 
       <BarList
           titulo="Demanda Táctica por estado TI"
           descripcion="Requerimientos de DT según su Estado TI."
           :items="estadosDT"
-          color="#2563eb"
+          color="var(--pi-primary)"
           :limite="12"
       />
 
@@ -563,35 +563,35 @@ const actividadesCQ =
           titulo="Listado por estado"
           descripcion="Casos del Listado que todavía no están en DT."
           :items="estadosListado"
-          color="#c2410c"
+          color="var(--pi-orange)"
       />
 
       <BarList
           titulo="Actividades de ClearQuest por estado"
           descripcion="Cada actividad cuenta una vez."
           :items="actividadesCQ"
-          color="#7c3aed"
+          color="var(--pi-purple)"
       />
 
       <BarList
           titulo="Carga por responsable"
           descripcion="Requerimientos de DT y Listado por responsable o analista."
           :items="cargaResponsable"
-          color="#2563eb"
+          color="var(--pi-primary)"
       />
 
       <BarList
           titulo="Demanda Táctica por recurso"
           descripcion="Quién atiende cada requerimiento de DT."
           :items="porRecurso"
-          color="#2563eb"
+          color="var(--pi-primary)"
       />
 
       <BarList
           titulo="Requerimientos por gerencia"
           descripcion="Gerencia de DT o gerencia usuaria del Listado."
           :items="porGerencia"
-          color="#2563eb"
+          color="var(--pi-primary)"
       />
 
     </div>
@@ -612,7 +612,7 @@ const actividadesCQ =
   gap: 8px;
   margin-bottom: 14px;
   padding: 10px 14px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--pi-danger-border);
   border-radius: var(--pi-radius-md);
   background: var(--pi-danger-soft);
   color: var(--pi-danger);
@@ -636,9 +636,9 @@ const actividadesCQ =
   gap: 12px;
   padding: 16px;
   border:
-      1px solid #e2e8f0;
+      1px solid var(--pi-border);
   border-radius: 12px;
-  background: white;
+  background: var(--pi-surface);
 }
 
 .metric-icon {
@@ -654,18 +654,18 @@ const actividadesCQ =
 }
 
 .metric-icon.dt {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--pi-primary-soft);
+  color: var(--pi-primary);
 }
 
 .metric-icon.cq {
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: var(--pi-purple-soft);
+  color: var(--pi-purple);
 }
 
 .metric-icon.ls {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--pi-orange-soft);
+  color: var(--pi-orange);
 }
 
 .metric-icon.warning {
@@ -674,14 +674,14 @@ const actividadesCQ =
 }
 
 .metrica-card span {
-  color: #64748b;
+  color: var(--pi-text-subtle);
   font-size: 11px;
 }
 
 .metrica-card strong {
   display: block;
   margin-top: 4px;
-  color: #0f172a;
+  color: var(--pi-text);
   font-size: 24px;
   font-variant-numeric: tabular-nums;
 }
@@ -689,7 +689,7 @@ const actividadesCQ =
 .metrica-card small {
   display: block;
   margin-top: 4px;
-  color: #94a3b8;
+  color: var(--pi-text-muted);
   font-size: 10px;
 }
 

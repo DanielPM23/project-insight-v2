@@ -798,7 +798,7 @@ function claseFuente(
 }
 
 .id-chip.primary {
-  border-color: #bfdbfe;
+  border-color: var(--pi-primary-border);
   background: var(--pi-primary-soft);
   color: var(--pi-primary);
 }
@@ -844,18 +844,18 @@ function claseFuente(
 }
 
 .source-dt {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--pi-primary-soft);
+  color: var(--pi-primary);
 }
 
 .source-cq {
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: var(--pi-purple-soft);
+  color: var(--pi-purple);
 }
 
 .source-ls {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--pi-orange-soft);
+  color: var(--pi-orange);
 }
 
 .alert-box,
@@ -869,9 +869,9 @@ function claseFuente(
 }
 
 .alert-box {
-  border: 1px solid #fde68a;
+  border: 1px solid var(--pi-warning-border);
   background: var(--pi-warning-soft);
-  color: #92400e;
+  color: var(--pi-warning-text);
 }
 
 .alert-box p {
@@ -915,10 +915,10 @@ function claseFuente(
   background: var(--pi-surface);
 }
 
-.desarrollo-box.danger { border-color: #fecaca; background: var(--pi-danger-soft); }
-.desarrollo-box.warn { border-color: #fde68a; background: var(--pi-warning-soft); }
-.desarrollo-box.info { border-color: #bfdbfe; background: var(--pi-primary-soft); }
-.desarrollo-box.modificada { border-color: #ddd6fe; background: #f5f3ff; }
+.desarrollo-box.danger { border-color: var(--pi-danger-border); background: var(--pi-danger-soft); }
+.desarrollo-box.warn { border-color: var(--pi-warning-border); background: var(--pi-warning-soft); }
+.desarrollo-box.info { border-color: var(--pi-primary-border); background: var(--pi-primary-soft); }
+.desarrollo-box.modificada { border-color: var(--pi-purple-border); background: var(--pi-purple-soft); }
 
 .desarrollo-box strong {
   color: var(--pi-text);
@@ -971,15 +971,15 @@ function claseFuente(
 }
 
 .tab-dot.source-dt {
-  background: #2563eb;
+  background: var(--pi-primary);
 }
 
 .tab-dot.source-cq {
-  background: #7c3aed;
+  background: var(--pi-purple);
 }
 
 .tab-dot.source-ls {
-  background: #c2410c;
+  background: var(--pi-orange);
 }
 
 .tab-count {
@@ -1067,7 +1067,7 @@ th {
 
 td {
   padding: 9px 10px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--pi-border-soft);
   color: var(--pi-text-secondary);
   font-size: 10px;
   vertical-align: top;
@@ -1079,7 +1079,7 @@ td {
 
 .clickable-row:hover,
 .clickable-row.open {
-  background: #fafcff;
+  background: var(--pi-surface-hover);
 }
 
 .expanded-row td {

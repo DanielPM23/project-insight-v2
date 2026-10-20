@@ -6,6 +6,8 @@ import { storeToRefs } from "pinia";
 import { useAuthStore } from "../stores/authStore";
 import { mensajeErrorAuth } from "../services/usuariosService";
 import logoNegro from "../assets/logo-negro.svg";
+import logoBlanco from "../assets/logo-blanco.svg";
+import { tema } from "../utils/tema";
 
 
 const auth = useAuthStore();
@@ -113,7 +115,7 @@ function salir() {
       <div class="brand">
         <img
             class="logo-mark"
-            :src="logoNegro"
+            :src="tema === 'oscuro' ? logoBlanco : logoNegro"
             alt="Project Insight"
         />
         <div>

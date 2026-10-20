@@ -485,18 +485,18 @@ function abrir(alerta: AlertaDesarrollo) {
 .vencido .icono { background: var(--pi-danger-soft); color: var(--pi-danger); }
 .hoy .icono { background: var(--pi-warning-soft); color: var(--pi-warning); }
 .proximo .icono { background: var(--pi-primary-soft); color: var(--pi-primary); }
-.modificada .icono { background: #f5f3ff; color: #7c3aed; }
+.modificada .icono { background: var(--pi-purple-soft); color: var(--pi-purple); }
 
 .texto span {
   display: block;
-  color: #64748b;
+  color: var(--pi-text-subtle);
   font-size: 11px;
 }
 
 .texto strong {
   display: block;
   margin-top: 4px;
-  color: #0f172a;
+  color: var(--pi-text);
   font-size: 24px;
   font-variant-numeric: tabular-nums;
 }
@@ -504,7 +504,7 @@ function abrir(alerta: AlertaDesarrollo) {
 .texto small {
   display: block;
   margin-top: 4px;
-  color: #94a3b8;
+  color: var(--pi-text-muted);
   font-size: 10px;
 }
 

@@ -140,7 +140,7 @@ h3 {
 .vencido { background: var(--pi-danger-soft); color: var(--pi-danger); }
 .hoy { background: var(--pi-warning-soft); color: var(--pi-warning); }
 .proximo { background: var(--pi-primary-soft); color: var(--pi-primary); }
-.modificada { background: #f5f3ff; color: #7c3aed; }
+.modificada { background: var(--pi-purple-soft); color: var(--pi-purple); }
 
 .vacio {
   margin: 8px 0 0;

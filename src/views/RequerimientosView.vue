@@ -1260,18 +1260,18 @@ function exportarCSV() {
 }
 
 .source-dt {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--pi-primary-soft);
+  color: var(--pi-primary);
 }
 
 .source-cq {
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: var(--pi-purple-soft);
+  color: var(--pi-purple);
 }
 
 .source-ls {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--pi-orange-soft);
+  color: var(--pi-orange);
 }
 
 .expansion {

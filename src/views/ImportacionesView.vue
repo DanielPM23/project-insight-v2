@@ -2302,7 +2302,7 @@ async function confirmarActualizacion() {
 
 .step.active
 .step-marker {
-  border-color: #bfdbfe;
+  border-color: var(--pi-primary-border);
 
   background:
       var(--pi-primary-soft);
@@ -2313,7 +2313,7 @@ async function confirmarActualizacion() {
 
 .step.completed
 .step-marker {
-  border-color: #bbf7d0;
+  border-color: var(--pi-success-border);
 
   background:
       var(--pi-success-soft);
@@ -2502,10 +2502,10 @@ async function confirmarActualizacion() {
 .dropzone:hover,
 .dropzone.dragging {
   border-color:
-      #93c5fd;
+      var(--pi-primary-border);
 
   background:
-      #f8fbff;
+      var(--pi-surface-soft);
 
   box-shadow:
       0 0 0 3px
@@ -2745,13 +2745,13 @@ async function confirmarActualizacion() {
 
 .alert-error {
   border:
-      1px solid #fecaca;
+      1px solid var(--pi-danger-border);
 
   background:
       var(--pi-danger-soft);
 
   color:
-      #991b1b;
+      var(--pi-danger-text);
 }
 
 .alert-icon {
@@ -2768,7 +2768,7 @@ async function confirmarActualizacion() {
   border-radius: 50%;
 
   background:
-      #fee2e2;
+      var(--pi-danger-soft);
 }
 
 .alert-icon i {
@@ -2884,34 +2884,34 @@ async function confirmarActualizacion() {
 
 .source-dt {
   background:
-      #eff6ff;
+      var(--pi-primary-soft);
 
   color:
-      #1d4ed8;
+      var(--pi-primary-hover);
 }
 
 .source-cq {
   background:
-      #f5f3ff;
+      var(--pi-purple-soft);
 
   color:
-      #6d28d9;
+      var(--pi-purple);
 }
 
 .source-ls {
   background:
-      #fff7ed;
+      var(--pi-orange-soft);
 
   color:
-      #c2410c;
+      var(--pi-orange);
 }
 
 .source-unknown {
   background:
-      #f1f5f9;
+      var(--pi-surface-muted);
 
   color:
-      #475569;
+      var(--pi-text-secondary);
 }
 
 .status-badge {
@@ -2999,25 +2999,25 @@ async function confirmarActualizacion() {
 
 .validation-summary.valid {
   border-color:
-      #bbf7d0;
+      var(--pi-success-border);
 
   background:
       linear-gradient(
           135deg,
-          #ffffff,
-          #f7fff9
+          var(--pi-surface),
+          var(--pi-surface-soft)
       );
 }
 
 .validation-summary.invalid {
   border-color:
-      #fde68a;
+      var(--pi-warning-border);
 
   background:
       linear-gradient(
           135deg,
-          #ffffff,
-          #fffdf5
+          var(--pi-surface),
+          var(--pi-surface-soft)
       );
 }
 
@@ -3210,7 +3210,7 @@ async function confirmarActualizacion() {
   padding: 11px 12px;
 
   border:
-      1px solid #bbf7d0;
+      1px solid var(--pi-success-border);
 
   border-radius:
       var(--pi-radius-sm);
@@ -3306,7 +3306,7 @@ async function confirmarActualizacion() {
   padding: 12px;
 
   border:
-      1px solid #fde68a;
+      1px solid var(--pi-warning-border);
 
   border-radius:
       var(--pi-radius-sm);
@@ -3323,7 +3323,7 @@ async function confirmarActualizacion() {
   gap: 6px;
 
   color:
-      #92400e;
+      var(--pi-warning-text);
 
   font-size: 10px;
   font-weight: 650;
@@ -3345,9 +3345,9 @@ async function confirmarActualizacion() {
 
   border-radius: 6px;
 
-  background: #ffffff;
+  background: var(--pi-surface);
 
-  color: #92400e;
+  color: var(--pi-warning-text);
 
   font-size: 8px;
   font-weight: 600;
@@ -3469,7 +3469,7 @@ td {
       9px 11px;
 
   border-bottom:
-      1px solid #edf2f7;
+      1px solid var(--pi-border-soft);
 
   color:
       var(--pi-text-secondary);
@@ -3489,7 +3489,7 @@ tbody tr {
 
 tbody tr:hover {
   background:
-      #fafcff;
+      var(--pi-surface-hover);
 }
 
 tbody tr:last-child td {
@@ -3701,13 +3701,13 @@ tbody tr:last-child td {
 .update-panel {
   margin-bottom: 16px;
   overflow: hidden;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--pi-primary-border);
   border-radius: var(--pi-radius-lg);
   background:
       linear-gradient(
           135deg,
-          #ffffff 0%,
-          #f8fbff 100%
+          var(--pi-surface) 0%,
+          var(--pi-surface-soft) 100%
       );
   box-shadow: var(--pi-shadow-sm);
 }
@@ -3718,7 +3718,7 @@ tbody tr:last-child td {
   justify-content: space-between;
   gap: 16px;
   padding: 17px 18px;
-  border-bottom: 1px solid #dbeafe;
+  border-bottom: 1px solid var(--pi-primary-border);
 }
 
 .update-header h3 {
@@ -3741,8 +3741,8 @@ tbody tr:last-child td {
   flex-shrink: 0;
   padding: 5px 8px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--pi-primary-soft);
+  color: var(--pi-primary);
   font-size: 8px;
   font-weight: 650;
 }
@@ -3763,7 +3763,7 @@ tbody tr:last-child td {
   padding: 12px;
   border: 1px solid var(--pi-border);
   border-radius: var(--pi-radius-md);
-  background: #ffffff;
+  background: var(--pi-surface);
 }
 
 .comparison-icon {
@@ -3778,26 +3778,26 @@ tbody tr:last-child td {
 
 .comparison-card.new
 .comparison-icon {
-  background: #ecfdf5;
-  color: #16a34a;
+  background: var(--pi-success-soft);
+  color: var(--pi-success);
 }
 
 .comparison-card.modified
 .comparison-icon {
-  background: #fff7ed;
-  color: #ea580c;
+  background: var(--pi-orange-soft);
+  color: var(--pi-orange);
 }
 
 .comparison-card.unchanged
 .comparison-icon {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--pi-surface-muted);
+  color: var(--pi-text-subtle);
 }
 
 .comparison-card.inactive
 .comparison-icon {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--pi-danger-soft);
+  color: var(--pi-danger);
 }
 
 .comparison-card strong {
@@ -3820,7 +3820,7 @@ tbody tr:last-child td {
   overflow: hidden;
   border: 1px solid var(--pi-border);
   border-radius: var(--pi-radius-md);
-  background: #ffffff;
+  background: var(--pi-surface);
 }
 
 .changes-preview-header {
@@ -3861,7 +3861,7 @@ tbody tr:last-child td {
     minmax(0, 1fr);
   gap: 14px;
   padding: 10px 12px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--pi-border-soft);
 }
 
 .change-row:last-child {
@@ -3925,7 +3925,7 @@ tbody tr:last-child td {
 .change-old {
   max-width: 120px;
   overflow: hidden;
-  color: #b91c1c;
+  color: var(--pi-danger-text);
   text-decoration: line-through;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3934,7 +3934,7 @@ tbody tr:last-child td {
 .change-new {
   max-width: 120px;
   overflow: hidden;
-  color: #15803d;
+  color: var(--pi-success-text);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3952,10 +3952,10 @@ tbody tr:last-child td {
   gap: 7px;
   margin: 0 18px 14px;
   padding: 9px 10px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--pi-danger-border);
   border-radius: var(--pi-radius-sm);
-  background: #fffafa;
-  color: #991b1b;
+  background: var(--pi-danger-soft);
+  color: var(--pi-danger-text);
   font-size: 8px;
   line-height: 1.45;
 }
@@ -3971,7 +3971,7 @@ tbody tr:last-child td {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 18px;
-  border-top: 1px solid #dbeafe;
+  border-top: 1px solid var(--pi-primary-border);
 }
 
 .update-action > div {
@@ -3996,7 +3996,7 @@ tbody tr:last-child td {
   gap: 7px;
   margin: 0 18px 16px;
   padding: 9px 10px;
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--pi-success-border);
   border-radius: var(--pi-radius-sm);
   background: var(--pi-success-soft);
   color: var(--pi-success);
@@ -4050,7 +4050,7 @@ tbody tr:last-child td {
   padding: 17px 18px;
 
   border:
-      1px solid #bfdbfe;
+      1px solid var(--pi-primary-border);
 
   border-radius:
       var(--pi-radius-lg);
@@ -4058,8 +4058,8 @@ tbody tr:last-child td {
   background:
       linear-gradient(
           135deg,
-          #ffffff 0%,
-          #f5f9ff 100%
+          var(--pi-surface) 0%,
+          var(--pi-surface-soft) 100%
       );
 
   box-shadow:
@@ -4068,13 +4068,13 @@ tbody tr:last-child td {
 
 .baseline-card.completed {
   border-color:
-      #bbf7d0;
+      var(--pi-success-border);
 
   background:
       linear-gradient(
           135deg,
-          #ffffff 0%,
-          #f5fff8 100%
+          var(--pi-surface) 0%,
+          var(--pi-surface-soft) 100%
       );
 }
 
@@ -4298,7 +4298,7 @@ tbody tr:last-child td {
 
 .primary-button:disabled {
   background:
-      #94a3b8;
+      var(--pi-text-muted);
 
   cursor: not-allowed;
 

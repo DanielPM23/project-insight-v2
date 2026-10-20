@@ -25,6 +25,7 @@ import router
 
 import "primeicons/primeicons.css";
 import "./style.css";
+import "./utils/tema";
 
 const app =
     createApp(App);
@@ -55,6 +56,29 @@ const ProjectInsightPreset =
                 800: "{blue.800}",
                 900: "{blue.900}",
                 950: "{blue.950}"
+            },
+
+            /*
+             * En oscuro, la misma gama pizarra que usan las
+             * variables --pi-* de style.css.
+             */
+            colorScheme: {
+                dark: {
+                    surface: {
+                        0: "#ffffff",
+                        50: "{slate.50}",
+                        100: "{slate.100}",
+                        200: "{slate.200}",
+                        300: "{slate.300}",
+                        400: "{slate.400}",
+                        500: "{slate.500}",
+                        600: "{slate.600}",
+                        700: "{slate.700}",
+                        800: "{slate.800}",
+                        900: "{slate.900}",
+                        950: "{slate.950}"
+                    }
+                }
             }
         }
     });
@@ -74,7 +98,11 @@ app.use(
             ProjectInsightPreset,
 
             options: {
-                darkModeSelector: false
+                /*
+                 * Misma clase que el modo oscuro de
+                 * style.css (ver utils/tema.ts).
+                 */
+                darkModeSelector: ".app-dark"
             }
         }
     }

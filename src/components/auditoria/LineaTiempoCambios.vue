@@ -161,9 +161,9 @@ ol {
   font-weight: 700;
 }
 
-.source-dt { background: #eff6ff; color: #2563eb; }
-.source-cq { background: #f5f3ff; color: #7c3aed; }
-.source-ls { background: #fff7ed; color: #c2410c; }
+.source-dt { background: var(--pi-primary-soft); color: var(--pi-primary); }
+.source-cq { background: var(--pi-purple-soft); color: var(--pi-purple); }
+.source-ls { background: var(--pi-orange-soft); color: var(--pi-orange); }
 
 .tag {
   font-size: 10px;

@@ -4,25 +4,44 @@
     --pi-primary: #2563eb;
     --pi-primary-hover: #1d4ed8;
     --pi-primary-soft: #eff6ff;
+    --pi-primary-border: #bfdbfe;
 
     --pi-bg: #f6f8fb;
     --pi-surface: #ffffff;
     --pi-surface-soft: #f8fafc;
     --pi-surface-muted: #f1f5f9;
+    --pi-surface-hover: #fafcff;
 
     --pi-text: #0f172a;
     --pi-text-secondary: #475569;
+    --pi-text-subtle: #64748b;
     --pi-text-muted: #94a3b8;
 
     --pi-border: #e2e8f0;
     --pi-border-strong: #cbd5e1;
+    --pi-border-soft: #edf2f7;
 
     --pi-success: #16a34a;
     --pi-success-soft: #ecfdf5;
+    --pi-success-border: #bbf7d0;
+    --pi-success-text: #15803d;
     --pi-warning: #d97706;
     --pi-warning-soft: #fffbeb;
+    --pi-warning-border: #fde68a;
+    --pi-warning-text: #92400e;
     --pi-danger: #dc2626;
     --pi-danger-soft: #fef2f2;
+    --pi-danger-border: #fecaca;
+    --pi-danger-text: #991b1b;
+
+    /* Fuentes y avisos: DT azul, CQ morado, Listado naranja. */
+    --pi-purple: #7c3aed;
+    --pi-purple-soft: #f5f3ff;
+    --pi-purple-border: #ddd6fe;
+    --pi-orange: #c2410c;
+    --pi-orange-soft: #fff7ed;
+
+    --pi-topbar-bg: rgba(255, 255, 255, 0.94);
 
     --pi-sidebar-bg: #0f172a;
     --pi-sidebar-text: #94a3b8;
@@ -40,6 +59,63 @@
     --pi-topbar-height: 64px;
 
     --pi-transition: 180ms ease;
+
+    color-scheme: light;
+}
+
+
+/*
+ * Modo oscuro: la clase la pone src/utils/tema.ts en <html>
+ * (y el script de index.html antes de cargar, para que no
+ * parpadee). PrimeVue usa el mismo selector.
+ */
+:root.app-dark {
+    --pi-primary: #3b82f6;
+    --pi-primary-hover: #60a5fa;
+    --pi-primary-soft: rgba(59, 130, 246, 0.14);
+    --pi-primary-border: rgba(96, 165, 250, 0.35);
+
+    --pi-bg: #080d18;
+    --pi-surface: #0f172a;
+    --pi-surface-soft: #131d31;
+    --pi-surface-muted: #1e293b;
+    --pi-surface-hover: #16213a;
+
+    --pi-text: #e2e8f0;
+    --pi-text-secondary: #cbd5e1;
+    --pi-text-subtle: #94a3b8;
+    --pi-text-muted: #7c8aa0;
+
+    --pi-border: #263248;
+    --pi-border-strong: #334155;
+    --pi-border-soft: #1f2a3d;
+
+    --pi-success: #22c55e;
+    --pi-success-soft: rgba(34, 197, 94, 0.12);
+    --pi-success-border: rgba(34, 197, 94, 0.32);
+    --pi-success-text: #4ade80;
+    --pi-warning: #f59e0b;
+    --pi-warning-soft: rgba(245, 158, 11, 0.12);
+    --pi-warning-border: rgba(245, 158, 11, 0.32);
+    --pi-warning-text: #fbbf24;
+    --pi-danger: #f87171;
+    --pi-danger-soft: rgba(239, 68, 68, 0.12);
+    --pi-danger-border: rgba(239, 68, 68, 0.32);
+    --pi-danger-text: #fca5a5;
+
+    --pi-purple: #a78bfa;
+    --pi-purple-soft: rgba(139, 92, 246, 0.14);
+    --pi-purple-border: rgba(139, 92, 246, 0.35);
+    --pi-orange: #fb923c;
+    --pi-orange-soft: rgba(249, 115, 22, 0.12);
+
+    --pi-sidebar-bg: #0b1222;
+
+    --pi-topbar-bg: rgba(15, 23, 42, 0.92);
+
+    --pi-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+
+    color-scheme: dark;
 }
 
 * {

@@ -9,6 +9,7 @@ import AlertaTag from "../alertas/AlertaTag.vue";
 import { useAlertasStore } from "../../stores/alertasStore";
 import { textoDias } from "../../services/alertasService";
 import { formatearFecha } from "../../utils/fechas";
+import { alternarTema, tema } from "../../utils/tema";
 
 defineEmits<{
   alternarSidebar: [];
@@ -97,6 +98,16 @@ const subtitulo = computed(
           Ctrl K
         </span>
       </div>
+
+      <button
+          class="icon-button"
+          type="button"
+          :aria-label="tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          :title="tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          @click="alternarTema"
+      >
+        <i :class="tema === 'oscuro' ? 'pi pi-sun' : 'pi pi-moon'" />
+      </button>
 
       <button
           class="icon-button bell-button"
@@ -207,7 +218,7 @@ const subtitulo = computed(
 
   padding: 0 24px;
 
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--pi-topbar-bg);
   border-bottom: 1px solid var(--pi-border);
 
   backdrop-filter: blur(12px);
@@ -326,7 +337,7 @@ const subtitulo = computed(
 
 .global-search:focus-within {
   background: var(--pi-surface);
-  border-color: #93c5fd;
+  border-color: var(--pi-primary-border);
 
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
@@ -351,7 +362,7 @@ const subtitulo = computed(
 }
 
 .global-search input::placeholder {
-  color: #a8b2c1;
+  color: var(--pi-text-muted);
 }
 
 .shortcut {
