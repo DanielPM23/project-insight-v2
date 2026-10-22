@@ -369,6 +369,17 @@ function claseFuente(
 <template>
   <section class="detail-page">
 
+    <Teleport defer to="#topbar-acciones">
+      <RouterLink
+          v-if="requerimiento"
+          :to="{ name: 'planificacion', query: { id: requerimiento.id } }"
+          class="planificacion-link"
+      >
+        <i class="pi pi-calendar" />
+        Ver en planificación
+      </RouterLink>
+    </Teleport>
+
     <RouterLink
         :to="{ name: 'requerimientos' }"
         class="back-link"
@@ -758,6 +769,24 @@ function claseFuente(
 .detail-page {
   width: 100%;
   padding-bottom: 32px;
+}
+
+.planificacion-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--pi-border-strong);
+  border-radius: 6px;
+  color: var(--pi-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.planificacion-link:hover {
+  border-color: var(--pi-primary);
+  color: var(--pi-primary);
 }
 
 .back-link {

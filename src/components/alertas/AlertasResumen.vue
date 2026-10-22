@@ -11,7 +11,8 @@ import { formatearFecha } from "../../utils/fechas";
 
 /*
  * Bloque de alertas del Dashboard: conteo por nivel y los
- * vencimientos más urgentes.
+ * vencimientos más urgentes. Los niveles de vencimiento
+ * abren Planificación filtrada.
  */
 const store = useAlertasStore();
 const { conteo, pendientes, configuracion, cargando } = storeToRefs(store);
@@ -41,7 +42,9 @@ const niveles = computed(() => [
       <RouterLink
           v-for="nivel in niveles"
           :key="nivel.clave"
-          :to="{ name: 'requerimientos', query: { alerta: nivel.clave } }"
+          :to="nivel.clave === 'MODIFICADA'
+              ? { name: 'requerimientos', query: { alerta: nivel.clave } }
+              : { name: 'planificacion', query: { estadoTemporal: nivel.clave, tab: 'proximos' } }"
           class="nivel"
           :class="nivel.clase"
       >

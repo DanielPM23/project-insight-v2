@@ -281,6 +281,39 @@ export function desarrolloTerminado(
 
 
 /*
+ * Fecha final de desarrollo de un requerimiento ("Fin
+ * Desarrollo" de DT), la misma que usan Alertas y
+ * Planificación.
+ */
+export function fechaFinDesarrollo(
+    requerimiento: Requerimiento
+): Date | null {
+    return aDiaCalendario(requerimiento.demandaTactica?.datos.fin_desarrollo);
+}
+
+
+/*
+ * Nivel de vencimiento según los días que faltan para la
+ * fecha final de un desarrollo sin terminar. null = en
+ * plazo (fuera del rango de anticipación).
+ *
+ * Alertas y Planificación usan esta misma regla para que
+ * un requerimiento no aparezca vencido en una y en plazo
+ * en la otra.
+ */
+export function nivelVencimiento(
+    dias: number,
+    configuracion: ConfiguracionAlertas
+): NivelAlerta | null {
+    if (dias < 0) return "VENCIDO";
+    if (dias === 0) return "VENCE_HOY";
+    if (dias <= configuracion.diasAnticipacion) return "PROXIMO";
+
+    return null;
+}
+
+
+/*
  * Solo los requerimientos con fecha final de desarrollo
  * registrada pueden tener alerta.
  */
@@ -305,7 +338,7 @@ export function calcularAlertas(
             requerimiento.demandaTactica;
 
         const fechaFin =
-            aDiaCalendario(dt?.datos.fin_desarrollo);
+            fechaFinDesarrollo(requerimiento);
 
         if (!dt || !fechaFin) {
             continue;
@@ -314,18 +347,10 @@ export function calcularAlertas(
         const dias =
             diasEntre(hoy, fechaFin);
 
-        let nivel: NivelAlerta | null =
-            null;
-
-        if (!desarrolloTerminado(requerimiento, configuracion)) {
-            if (dias < 0) {
-                nivel = "VENCIDO";
-            } else if (dias === 0) {
-                nivel = "VENCE_HOY";
-            } else if (dias <= configuracion.diasAnticipacion) {
-                nivel = "PROXIMO";
-            }
-        }
+        const nivel =
+            desarrolloTerminado(requerimiento, configuracion)
+                ? null
+                : nivelVencimiento(dias, configuracion);
 
         const fechaModificada =
             modificadas.get(dt.idDocumento) ?? null;

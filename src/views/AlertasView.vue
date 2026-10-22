@@ -422,6 +422,20 @@ function abrir(alerta: AlertaDesarrollo) {
             <span class="celda-corta" :title="data.responsable">{{ data.responsable }}</span>
           </template>
         </Column>
+
+        <Column style="width: 3rem">
+          <template #body="{ data }">
+            <RouterLink
+                v-tooltip.left="'Ver en planificación'"
+                :to="{ name: 'planificacion', query: { id: data.idRequerimiento } }"
+                class="ver-planificacion"
+                aria-label="Ver en planificación"
+                @click.stop
+            >
+              <i class="pi pi-calendar" />
+            </RouterLink>
+          </template>
+        </Column>
       </DataTable>
     </div>
 
@@ -613,6 +627,18 @@ function abrir(alerta: AlertaDesarrollo) {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ver-planificacion {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--pi-text-muted);
+}
+
+.ver-planificacion:hover {
+  background: var(--pi-primary-soft);
+  color: var(--pi-primary);
 }
 
 .atraso {

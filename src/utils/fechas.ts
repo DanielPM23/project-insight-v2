@@ -41,6 +41,21 @@ function crearFecha(
     segundo: number,
     offsetMinutos: number | null
 ): Date | null {
+    /*
+     * Date corre los días que no existen (31/02 → 03/03):
+     * esos valores no son fechas válidas.
+     */
+    const control =
+        new Date(Date.UTC(anio, mes, dia));
+
+    if (
+        control.getUTCFullYear() !== anio ||
+        control.getUTCMonth() !== mes ||
+        control.getUTCDate() !== dia
+    ) {
+        return null;
+    }
+
     const fecha =
         offsetMinutos === null
             ? new Date(anio, mes, dia, hora, minuto, segundo)
@@ -178,8 +193,14 @@ export function aDiaCalendario(
         const texto =
             valor.trim();
 
-        if (/^\d{4}-\d{2}-\d{2}/.test(texto)) {
-            fecha = new Date(texto);
+        const iso =
+            /^(\d{4})-(\d{2})-(\d{2})/.exec(texto);
+
+        if (iso) {
+            // Los días que no existen (2026-02-31) no son fechas.
+            fecha = crearFecha(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 0, 0, 0, 0)
+                ? new Date(texto)
+                : null;
         } else {
             const parseado =
                 parsearFecha(texto);

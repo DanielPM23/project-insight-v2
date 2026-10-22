@@ -9,7 +9,6 @@ import DashboardView from "../views/DashboardView.vue";
 import RequerimientosView from "../views/RequerimientosView.vue";
 import RequerimientoDetalleView from "../views/RequerimientoDetalleView.vue";
 import ImportacionesView from "../views/ImportacionesView.vue";
-import PlanificacionView from "../views/PlanificacionView.vue";
 import ReportesView from "../views/ReportesView.vue";
 import AuditoriaView from "../views/AuditoriaView.vue";
 import AlertasView from "../views/AlertasView.vue";
@@ -126,14 +125,19 @@ const router = createRouter({
                     name:
                         "planificacion",
 
-                    component:
-                    PlanificacionView,
+                    // Carga aparte: el calendario solo se descarga al entrar.
+                    component: () =>
+                        import("../views/PlanificacionView.vue"),
                     meta: {
                         titulo:
                             "Planificación",
 
                         subtitulo:
-                            "Cronogramas y seguimiento"
+                            "Cuándo empieza y termina cada desarrollo",
+
+                        // El calendario ocupa el alto disponible.
+                        pantallaCompleta:
+                            true
                     }
                 },
 

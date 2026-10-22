@@ -1,0 +1,40 @@
+/*
+ * Colores de los estados temporales de Planificación
+ * (ESTADOS_TEMPORALES.clase). Vencido, Vence hoy y Próximo
+ * usan los mismos colores que Alertas.
+ */
+.pt-vencido {
+  --pt-color: var(--pi-danger);
+  --pt-soft: var(--pi-danger-soft);
+  --pt-border: var(--pi-danger-border);
+}
+
+.pt-hoy {
+  --pt-color: var(--pi-warning);
+  --pt-soft: var(--pi-warning-soft);
+  --pt-border: var(--pi-warning-border);
+}
+
+.pt-proximo {
+  --pt-color: var(--pi-primary);
+  --pt-soft: var(--pi-primary-soft);
+  --pt-border: var(--pi-primary-border);
+}
+
+.pt-plazo {
+  --pt-color: var(--pi-success);
+  --pt-soft: var(--pi-success-soft);
+  --pt-border: var(--pi-success-border);
+}
+
+.pt-finalizado,
+.pt-sin,
+.pt-info {
+  --pt-color: var(--pi-text-muted);
+  --pt-soft: var(--pi-surface-muted);
+  --pt-border: var(--pi-border-strong);
+}
+
+.pt-info {
+  --pt-soft: var(--pi-surface-soft);
+}
