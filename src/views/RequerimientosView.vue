@@ -153,6 +153,7 @@ type CampoFiltro =
     "tipoMatch" |
     "estado" |
     "estadoListado" |
+    "estadoActividad" |
     "categoria" |
     "recurso" |
     "responsable" |
@@ -169,6 +170,7 @@ const FILTROS: {
   { campo: "tipoMatch", nombre: "Tipo de Match", orden: "cantidad" },
   { campo: "estado", nombre: "Estado", orden: "cantidad" },
   { campo: "estadoListado", nombre: "Estado Listado", orden: "cantidad" },
+  { campo: "estadoActividad", nombre: "Estado actividad", orden: "cantidad" },
   { campo: "categoria", nombre: "Categoría", orden: "cantidad" },
   { campo: "recurso", nombre: "Recurso", orden: "cantidad" },
   { campo: "responsable", nombre: "Responsable", orden: "cantidad" },
@@ -184,6 +186,7 @@ function filtrosVacios(): Record<CampoFiltro, string[]> {
     tipoMatch: [],
     estado: [],
     estadoListado: [],
+    estadoActividad: [],
     categoria: [],
     recurso: [],
     responsable: [],
@@ -395,6 +398,7 @@ const requerimientosFiltrados =
           item.nombre,
           item.estado,
           item.estadoListado,
+          item.estadoActividad,
           item.recurso,
           item.categoria,
           item.responsable,
@@ -430,6 +434,7 @@ const COLUMNAS: ColumnaTabla[] = [
   { campo: "tipoMatch", nombre: "Tipo de Match", ancho: "12rem" },
   { campo: "estado", nombre: "Estado", ancho: "13rem" },
   { campo: "estadoListado", nombre: "Estado Listado", ancho: "11rem" },
+  { campo: "estadoActividad", nombre: "Estado actividad", ancho: "10rem" },
   { campo: "categoria", nombre: "Categoría", ancho: "8.5rem" },
   { campo: "recurso", nombre: "Recurso", ancho: "9rem" },
   { campo: "responsable", nombre: "Responsable / Analista", ancho: "12rem" },
@@ -551,7 +556,7 @@ function severidadEstado(
   const texto =
       estado.toLowerCase();
 
-  if (/finaliz|producci|cerrad|atendid|culminad|complet/.test(texto)) return "success";
+  if (/finaliz|producci|cerrad|atendid|culminad|complet|validad/.test(texto)) return "success";
   if (/descart|rechaz|anulad|cancel/.test(texto)) return "danger";
   if (/stand|suspend|pospuest|observ|pendiente|espera/.test(texto)) return "warn";
   if (/desarroll|proceso|iniciad|asignad|prueba|qa|certific|análisis|analisis/.test(texto)) return "info";
@@ -930,6 +935,14 @@ function exportarCSV() {
               />
 
               <Tag
+                  v-else-if="columna.campo === 'estadoActividad' && data.estadoActividad"
+                  v-tooltip.top="data.estadoActividad"
+                  :value="data.estadoActividad"
+                  :severity="severidadEstado(data.estadoActividad)"
+                  class="cell-tag"
+              />
+
+              <Tag
                   v-else-if="columna.campo === 'tipoMatch' && data.tipoMatch"
                   v-tooltip.top="data.detalleMatch || 'Aparece en un solo archivo'"
                   :value="data.tipoMatch"
@@ -973,7 +986,7 @@ function exportarCSV() {
               </span>
 
               <span
-                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'estadoListado', 'tipoMatch', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
+                  v-else-if="!['idTramite', 'idHistorico', 'idDemanda', 'estado', 'estadoListado', 'estadoActividad', 'tipoMatch', 'categoria', 'recurso'].includes(columna.campo) && data[columna.campo]"
                   class="cell-text"
                   :title="String(data[columna.campo])"
               >
@@ -1000,6 +1013,10 @@ function exportarCSV() {
                 <div>
                   <span>Actividades ClearQuest</span>
                   <strong>{{ data.clearQuest.length || "Ninguna" }}</strong>
+                </div>
+                <div>
+                  <span>Estado actividad</span>
+                  <strong>{{ data.estadoActividad || "—" }}</strong>
                 </div>
                 <div>
                   <span>Gerencia</span>

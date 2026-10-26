@@ -27,8 +27,9 @@ function normalizarTexto(
         )
         .trim()
         .toLowerCase()
+        // Estado_Desarrollo y Estado Desarrollo son la misma columna.
         .replace(
-            /[\n\r\t]+/g,
+            /[\n\r\t_]+/g,
             " "
         )
         .replace(

@@ -83,6 +83,13 @@ export interface Requerimiento {
      */
     estadoListado: string;
 
+    /*
+     * Estado de la última actividad en ClearQuest (Finalizada,
+     * Asignada...). Si no está en CQ, la "Última Actividad CQ"
+     * de DT.
+     */
+    estadoActividad: string;
+
     responsable: string;
     aplicacion: string;
     gerencia: string;
@@ -224,6 +231,7 @@ function crearRequerimiento(
         nombre: "",
         estado: "",
         estadoListado: "",
+        estadoActividad: "",
         responsable: "",
         aplicacion: "",
         gerencia: "",
@@ -265,6 +273,43 @@ function ultimaActividad(
             )
         )
         .at(-1);
+}
+
+
+function unirValores(
+    valores: string[]
+): string {
+    return Array.from(
+        new Set(
+            valores
+                .map(valor => valor.trim())
+                .filter(Boolean)
+        )
+    ).join(" / ");
+}
+
+
+/*
+ * Estados de actividad de los trámites de CQ. "Sin coincidencia"
+ * solo se muestra si ningún trámite tiene actividad.
+ */
+const SIN_ACTIVIDAD =
+    "sin coincidencia";
+
+function estadoActividad(
+    tramites: RegistroFuente[]
+): string {
+    const estados =
+        tramites.map(tramite => texto(tramite.datos.estado_actividad_cq));
+
+    const conActividad =
+        estados.filter(estado => estado.toLowerCase() !== SIN_ACTIVIDAD);
+
+    return unirValores(
+        conActividad.some(Boolean)
+            ? conActividad
+            : estados
+    );
 }
 
 
@@ -325,6 +370,10 @@ function completarResumen(
                     .filter(Boolean)
             )
         ).join(" / ");
+
+    requerimiento.estadoActividad =
+        estadoActividad(requerimiento.clearQuest) ||
+        unirValores(texto(dt?.datos.ultima_actividad_cq).split(","));
 
     requerimiento.responsable =
         texto(dt?.datos.responsable_dt) ||

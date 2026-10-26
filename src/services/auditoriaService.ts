@@ -207,6 +207,13 @@ export function valorComparable(
         return normalizado;
     }
 
+    // El Año llega como número o como texto según la versión del Excel.
+    if (typeof valor === "number") {
+        return Number.isFinite(valor)
+            ? String(valor)
+            : null;
+    }
+
     if (typeof valor === "string") {
         const texto =
             valor.trim();

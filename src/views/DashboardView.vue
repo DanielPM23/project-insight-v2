@@ -367,6 +367,21 @@ const estadosListado =
     );
 
 
+/*
+ * Requerimientos con trámites en ClearQuest según el estado
+ * de su actividad; cada barra abre la lista filtrada.
+ */
+const estadosActividad =
+    computed(() =>
+        agrupar(
+            lista.value.filter(item => item.fuentes.includes("CQ")),
+            item => item.estadoActividad,
+            "estadoActividad",
+            ["CQ"]
+        )
+    );
+
+
 const cargaResponsable =
     computed(() =>
         agrupar(
@@ -570,6 +585,13 @@ const actividadesCQ =
           titulo="Actividades de ClearQuest por estado"
           descripcion="Cada actividad cuenta una vez."
           :items="actividadesCQ"
+          color="var(--pi-purple)"
+      />
+
+      <BarList
+          titulo="Requerimientos por estado de actividad"
+          descripcion="Estado de la actividad en ClearQuest."
+          :items="estadosActividad"
           color="var(--pi-purple)"
       />
 

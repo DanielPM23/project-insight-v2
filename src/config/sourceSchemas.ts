@@ -360,6 +360,7 @@ const CLEARQUEST: ConfiguracionFuente = {
         { campo: "descripcion_cq", titulo: "Resumen" },
         { campo: "estado_cq", titulo: "Estado" },
         { campo: "estado_desarrollo_cq", titulo: "Estado desarrollo" },
+        { campo: "estado_actividad_cq", titulo: "Estado actividad" },
         { campo: "analista_cq", titulo: "Responsable" }
     ],
 
@@ -397,6 +398,7 @@ const CLEARQUEST: ConfiguracionFuente = {
         estado_desarrollo_cq: {
             obligatorio: false,
             aliases: [
+                "Estado_Desarrollo",
                 "EstadoDesarrollo",
                 "Estado Desarrollo"
             ]
@@ -405,6 +407,7 @@ const CLEARQUEST: ConfiguracionFuente = {
         numero_documento_cq: {
             obligatorio: false,
             aliases: [
+                "Numero_Documento",
                 "NumeroDocumento",
                 "Número Documento",
                 "Numero Documento"
@@ -461,6 +464,7 @@ const CLEARQUEST: ConfiguracionFuente = {
             aliases: [
                 "F.REGISTRO",
                 "F. REGISTRO",
+                "Fecha_Registro",
                 "FechaRegistro",
                 "Fecha Registro"
             ]
@@ -564,6 +568,21 @@ const CLEARQUEST: ConfiguracionFuente = {
             obligatorio: true,
             aliases: [
                 "Estado"
+            ]
+        },
+
+        /*
+         * Estado de la última actividad del trámite (Finalizada,
+         * Asignada, Iniciada...). Es el mismo dato que Demanda
+         * Táctica trae como "Última Actividad CQ".
+         */
+        estado_actividad_cq: {
+            obligatorio: false,
+            aliases: [
+                "Estado_Actividad_Match",
+                "Estado_Actividad",
+                "Estado Actividad",
+                "Estado de Actividad"
             ]
         }
 

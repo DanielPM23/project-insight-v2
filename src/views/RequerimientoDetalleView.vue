@@ -218,6 +218,23 @@ watch(
 );
 
 
+/*
+ * "Última Actividad CQ" de DT, sin repetir valores
+ * ("Finalizada,Finalizada" → "Finalizada").
+ */
+const actividadDT =
+    computed(() =>
+        Array.from(
+            new Set(
+                texto(requerimiento.value?.demandaTactica?.datos.ultima_actividad_cq)
+                    .split(",")
+                    .map(valor => valor.trim())
+                    .filter(Boolean)
+            )
+        ).join(" / ")
+    );
+
+
 const actividadAbierta =
     ref("");
 
@@ -487,6 +504,16 @@ function claseFuente(
             {{ requerimiento.estado }}
           </span>
 
+          <span
+              v-if="requerimiento.estadoActividad"
+              class="status-badge"
+              :title="actividadDT && actividadDT !== requerimiento.estadoActividad
+                ? `Demanda Táctica indica: ${actividadDT}`
+                : 'Estado de la actividad en ClearQuest'"
+          >
+            Actividad: {{ requerimiento.estadoActividad }}<template v-if="actividadDT && actividadDT !== requerimiento.estadoActividad"> (DT: {{ actividadDT }})</template>
+          </span>
+
           <span v-if="requerimiento.responsable">
             <i class="pi pi-user" />
             {{ requerimiento.responsable }}
@@ -686,6 +713,7 @@ function claseFuente(
                 <th>Trámite</th>
                 <th>Estado</th>
                 <th>Estado desarrollo</th>
+                <th>Estado actividad</th>
                 <th>Resumen</th>
                 <th>Responsable</th>
                 <th>Registro</th>
@@ -718,6 +746,7 @@ function claseFuente(
                     <td class="id-value">{{ texto(actividad.datos.id_tramite) || "—" }}</td>
                     <td><span class="status-badge">{{ actividad.estado || "—" }}</span></td>
                     <td>{{ texto(actividad.datos.estado_desarrollo_cq) || "—" }}</td>
+                    <td>{{ texto(actividad.datos.estado_actividad_cq) || "—" }}</td>
                     <td>{{ actividad.nombre || "—" }}</td>
                     <td>{{ texto(actividad.datos.analista_cq) || "—" }}</td>
                     <td>{{ formatearValor(actividad.datos.fecha_registro_cq) || "—" }}</td>
@@ -737,7 +766,7 @@ function claseFuente(
                     v-if="actividadAbierta === actividad.idDocumento"
                     class="expanded-row"
                 >
-                  <td colspan="7">
+                  <td :colspan="cqPorTramite ? 8 : 7">
                     <dl class="fields-grid">
                       <div
                           v-for="campo in camposRegistro(actividad)"
