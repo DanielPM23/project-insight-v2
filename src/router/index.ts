@@ -5,15 +5,12 @@ import {
 
 import MainLayout from "../layouts/MainLayout.vue";
 
-import DashboardView from "../views/DashboardView.vue";
-import RequerimientosView from "../views/RequerimientosView.vue";
-import RequerimientoDetalleView from "../views/RequerimientoDetalleView.vue";
-import ImportacionesView from "../views/ImportacionesView.vue";
-import ReportesView from "../views/ReportesView.vue";
-import AuditoriaView from "../views/AuditoriaView.vue";
-import AlertasView from "../views/AlertasView.vue";
-import ConfiguracionView from "../views/ConfiguracionView.vue";
-import UsuariosView from "../views/UsuariosView.vue";
+/*
+ * Cada vista se descarga al entrar en ella (como ya hacía
+ * Planificación). Antes todo iba en un solo archivo de 2 MB
+ * que el navegador tenía que bajar y evaluar antes de
+ * mostrar el login.
+ */
 import LoginView from "../views/LoginView.vue";
 
 import { useAuthStore } from "../stores/authStore";
@@ -47,8 +44,8 @@ const router = createRouter({
                         "dashboard",
                     name:
                         "dashboard",
-                    component:
-                    DashboardView,
+                    component: () =>
+                        import("../views/DashboardView.vue"),
                     meta: {
                         titulo:
                             "Dashboard",
@@ -64,8 +61,8 @@ const router = createRouter({
                     name:
                         "requerimientos",
 
-                    component:
-                    RequerimientosView,
+                    component: () =>
+                        import("../views/RequerimientosView.vue"),
 
                     meta: {
                         titulo:
@@ -85,8 +82,8 @@ const router = createRouter({
                     name:
                         "requerimiento-detalle",
 
-                    component:
-                    RequerimientoDetalleView,
+                    component: () =>
+                        import("../views/RequerimientoDetalleView.vue"),
 
                     props:
                         true,
@@ -104,8 +101,8 @@ const router = createRouter({
                         "importaciones",
                     name:
                         "importaciones",
-                    component:
-                    ImportacionesView,
+                    component: () =>
+                        import("../views/ImportacionesView.vue"),
                     meta: {
                         titulo:
                             "Importaciones",
@@ -146,8 +143,8 @@ const router = createRouter({
                         "reportes",
                     name:
                         "reportes",
-                    component:
-                    ReportesView,
+                    component: () =>
+                        import("../views/ReportesView.vue"),
                     meta: {
                         titulo:
                             "Reportes",
@@ -161,8 +158,8 @@ const router = createRouter({
                         "alertas",
                     name:
                         "alertas",
-                    component:
-                    AlertasView,
+                    component: () =>
+                        import("../views/AlertasView.vue"),
                     meta: {
                         titulo:
                             "Alertas",
@@ -177,8 +174,8 @@ const router = createRouter({
                     name:
                         "auditoria",
 
-                    component:
-                    AuditoriaView,
+                    component: () =>
+                        import("../views/AuditoriaView.vue"),
                     meta: {
                         titulo:
                             "Auditoría",
@@ -192,8 +189,8 @@ const router = createRouter({
                         "configuracion",
                     name:
                         "configuracion",
-                    component:
-                    ConfiguracionView,
+                    component: () =>
+                        import("../views/ConfiguracionView.vue"),
                     meta: {
                         titulo:
                             "Configuración",
@@ -211,8 +208,8 @@ const router = createRouter({
                         "usuarios",
                     name:
                         "usuarios",
-                    component:
-                    UsuariosView,
+                    component: () =>
+                        import("../views/UsuariosView.vue"),
                     meta: {
                         titulo:
                             "Usuarios",

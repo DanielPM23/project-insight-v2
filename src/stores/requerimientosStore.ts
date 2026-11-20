@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { computed, markRaw, ref, shallowRef } from "vue";
 import { obtenerRequerimientos } from "../services/requerimientosService";
 import type { Requerimiento } from "../services/requerimientosService";
 
@@ -9,7 +9,14 @@ import type { Requerimiento } from "../services/requerimientosService";
  * navegador. "Actualizar" vuelve a leer.
  */
 export const useRequerimientosStore = defineStore("requerimientos", () => {
-    const requerimientos = ref<Requerimiento[]>([]);
+    /*
+     * shallowRef + markRaw: la lista se reemplaza entera al
+     * cargar y nadie modifica sus elementos. Con ref, Vue
+     * envolvía en proxies cada requerimiento y cada fila de
+     * las fuentes (60+ campos), y cada filtro, gráfico o
+     * tabla pagaba ese costo al recorrerlos.
+     */
+    const requerimientos = shallowRef<Requerimiento[]>(markRaw([]));
     const cargando = ref(false);
     const cargado = ref(false);
     const error = ref("");
@@ -52,7 +59,7 @@ export const useRequerimientosStore = defineStore("requerimientos", () => {
         error.value = "";
 
         try {
-            requerimientos.value = await obtenerRequerimientos();
+            requerimientos.value = markRaw(await obtenerRequerimientos());
             cargado.value = true;
         } catch (e) {
             console.error("Error cargando requerimientos:", e);
@@ -71,7 +78,7 @@ export const useRequerimientosStore = defineStore("requerimientos", () => {
      * leídos con la sesión anterior.
      */
     function limpiar() {
-        requerimientos.value = [];
+        requerimientos.value = markRaw([]);
         cargado.value = false;
         error.value = "";
     }

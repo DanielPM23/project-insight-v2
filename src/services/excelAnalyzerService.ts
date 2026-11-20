@@ -210,7 +210,7 @@ function buscarMejorCabecera(
         const limite =
             Math.min(
                 filas.length,
-                50
+                FILAS_BUSQUEDA_CABECERA
             );
 
 
@@ -321,6 +321,63 @@ function buscarMejorCabecera(
 
 
     return mejorCandidato;
+}
+
+
+/*
+ * Filas que se revisan al buscar la cabecera.
+ */
+const FILAS_BUSQUEDA_CABECERA =
+    50;
+
+
+/*
+ * Vuelve a leer completa solo la hoja del candidato
+ * (la detección se hizo con las primeras filas).
+ */
+function leerHojaCompleta(
+    buffer: ArrayBuffer,
+    candidato: CandidatoCabecera
+): CandidatoCabecera {
+
+    const workbook =
+        XLSX.read(
+            buffer,
+            {
+                type: "array",
+
+                cellDates: true,
+
+                sheets: [
+                    candidato.hoja
+                ]
+            }
+        );
+
+    const sheet =
+        workbook.Sheets[
+            candidato.hoja
+            ];
+
+    if (!sheet) {
+        return candidato;
+    }
+
+    return {
+        ...candidato,
+
+        filas:
+            XLSX.utils.sheet_to_json<
+                unknown[]
+            >(
+                sheet,
+                {
+                    header: 1,
+                    defval: null,
+                    raw: true
+                }
+            )
+    };
 }
 
 
@@ -752,18 +809,28 @@ export async function analizarExcel(
     const buffer =
         await archivo.arrayBuffer();
 
-    const workbook =
+    /*
+     * Primera lectura: solo las primeras filas de cada hoja,
+     * que es donde se busca la cabecera. El libro de DT trae
+     * hojas auxiliares muy grandes (Actualización Demanda
+     * tiene ~24.000 filas) y convertirlas enteras era la
+     * mitad del tiempo de análisis.
+     */
+    const muestra =
         XLSX.read(
             buffer,
             {
                 type: "array",
 
-                cellDates: true
+                cellDates: true,
+
+                sheetRows:
+                FILAS_BUSQUEDA_CABECERA
             }
         );
 
     if (
-        workbook.SheetNames.length === 0
+        muestra.SheetNames.length === 0
     ) {
 
         throw new Error(
@@ -775,10 +842,22 @@ export async function analizarExcel(
     // DETECTAR TABLA Y FUENTE
     // =======================================================
 
-    const candidato =
+    const deteccion =
         buscarMejorCabecera(
-            workbook
+            muestra
         );
+
+    /*
+     * Segunda lectura: completa, pero solo de la hoja
+     * elegida.
+     */
+    const candidato =
+        deteccion
+            ? leerHojaCompleta(
+                buffer,
+                deteccion
+            )
+            : null;
 
     if (!candidato) {
 

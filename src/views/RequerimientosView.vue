@@ -37,6 +37,10 @@ import {
 import AlertaTag from "../components/alertas/AlertaTag.vue";
 
 import {
+  useTextoConDemora
+} from "../utils/demora";
+
+import {
   NIVELES_ALERTA
 } from "../services/alertasService";
 
@@ -200,6 +204,9 @@ function filtrosVacios(): Record<CampoFiltro, string[]> {
 const busqueda =
     ref("");
 
+const terminoBusqueda =
+    useTextoConDemora(busqueda);
+
 /*
  * Se muestran los requerimientos presentes en
  * al menos una de las fuentes seleccionadas.
@@ -357,10 +364,42 @@ function limpiarFiltros() {
 }
 
 
+/*
+ * Texto en el que se busca cada requerimiento, armado una
+ * vez por carga y no en cada tecla.
+ */
+const textoBusqueda =
+    computed(() =>
+        new Map(
+            requerimientos.value.map(item => [
+              item.id,
+              [
+                item.idMantenimiento,
+                item.idTramite,
+                item.idDemanda,
+                item.idHistorico,
+                item.caso,
+                item.nombre,
+                item.estado,
+                item.estadoListado,
+                item.estadoActividad,
+                item.recurso,
+                item.categoria,
+                item.responsable,
+                item.aplicacion,
+                item.gerencia
+              ]
+                  .join(" ")
+                  .toLowerCase()
+            ])
+        )
+    );
+
+
 const requerimientosFiltrados =
     computed(() => {
       const termino =
-          busqueda.value
+          terminoBusqueda.value
               .trim()
               .toLowerCase();
 
@@ -389,25 +428,9 @@ const requerimientosFiltrados =
           return true;
         }
 
-        return [
-          item.idMantenimiento,
-          item.idTramite,
-          item.idDemanda,
-          item.idHistorico,
-          item.caso,
-          item.nombre,
-          item.estado,
-          item.estadoListado,
-          item.estadoActividad,
-          item.recurso,
-          item.categoria,
-          item.responsable,
-          item.aplicacion,
-          item.gerencia
-        ]
-            .join(" ")
-            .toLowerCase()
-            .includes(termino);
+        return textoBusqueda.value
+            .get(item.id)
+            ?.includes(termino) ?? false;
       });
     });
 

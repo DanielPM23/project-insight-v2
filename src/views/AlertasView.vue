@@ -29,6 +29,7 @@ import { useAlertasStore } from "../stores/alertasStore";
 import { useAuthStore } from "../stores/authStore";
 import { aDiaCalendario, formatearFecha } from "../utils/fechas";
 import { descargarCSV } from "../utils/csv";
+import { useTextoConDemora } from "../utils/demora";
 import type { ColumnaCSV } from "../utils/csv";
 
 
@@ -53,6 +54,7 @@ const FILTROS_POR_DEFECTO: Filtro[] = ["VENCIDO", "VENCE_HOY", "PROXIMO"];
 
 const filtros = ref<Filtro[]>([...FILTROS_POR_DEFECTO]);
 const busqueda = ref("");
+const terminoBusqueda = useTextoConDemora(busqueda);
 const filtroEstado = ref<string[]>([]);
 const filtroResponsable = ref<string[]>([]);
 const rangoFin = ref<(Date | null)[] | null>(null);
@@ -105,7 +107,7 @@ const opcionesEstado = computed(() => opcionesDe("estado"));
 const opcionesResponsable = computed(() => opcionesDe("responsable"));
 
 const filas = computed(() => {
-  const termino = busqueda.value.trim().toLowerCase();
+  const termino = terminoBusqueda.value.trim().toLowerCase();
   const desde = aDiaCalendario(rangoFin.value?.[0] ?? null);
   const hasta = aDiaCalendario(rangoFin.value?.[1] ?? null) ?? desde;
 

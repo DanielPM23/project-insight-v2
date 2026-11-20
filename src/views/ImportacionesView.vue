@@ -9,12 +9,13 @@ import { FUENTES as FUENTES_IMPORTACION } from "../config/sourceSchemas";
 import {
   computed,
   onMounted,
-  ref
+  ref,
+  shallowRef
 } from "vue";
 
 import {
-  analizarExcel
-} from "../services/excelAnalyzerService";
+  analizarExcelEnSegundoPlano
+} from "../services/excelAnalyzerClient";
 
 import {
   validarRegistrosExcel
@@ -48,8 +49,13 @@ import {
 // ESTADO
 // =========================================================
 
+/*
+ * shallowRef: el análisis y la comparación solo se
+ * reemplazan enteros, y con ref Vue envolvía en proxies
+ * cada celda de cada fila del Excel.
+ */
 const analisis =
-    ref<AnalisisExcel | null>(null);
+    shallowRef<AnalisisExcel | null>(null);
 
 const cargando =
     ref(false);
@@ -73,7 +79,7 @@ const actualizacionAplicada =
     ref(false);
 
 const comparacion =
-    ref<ResultadoComparacionImportacion | null>(null);
+    shallowRef<ResultadoComparacionImportacion | null>(null);
 
 const mensajeActualizacion =
     ref("");
@@ -625,7 +631,7 @@ async function procesarArchivo(
   try {
 
     const resultado =
-        await analizarExcel(
+        await analizarExcelEnSegundoPlano(
             archivo
         );
 

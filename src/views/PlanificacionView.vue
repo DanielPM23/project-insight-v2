@@ -46,6 +46,7 @@ import type { CodigoFuente } from "../config/sourceSchemas";
 import { useAlertasStore } from "../stores/alertasStore";
 import { useRequerimientosStore } from "../stores/requerimientosStore";
 import { formatearFecha } from "../utils/fechas";
+import { useTextoConDemora } from "../utils/demora";
 
 
 /*
@@ -172,6 +173,7 @@ function filtrosVacios(): Record<CampoFiltro, string | null> {
 }
 
 const busqueda = ref("");
+const terminoBusqueda = useTextoConDemora(busqueda);
 const fuente = ref<CodigoFuente | null>(null);
 const filtros = ref(filtrosVacios());
 const estadoTemporal = ref<EstadoTemporal | null>(null);
@@ -219,7 +221,7 @@ const opcionesFuente = computed<Opcion[]>(() => [
  * tablas y los indicadores.
  */
 const base = computed(() => {
-  const termino = busqueda.value.trim().toLowerCase();
+  const termino = terminoBusqueda.value.trim().toLowerCase();
   const activos = FILTROS.filter(filtro => filtros.value[filtro.campo] !== null);
 
   return items.value.filter(item =>
@@ -393,6 +395,7 @@ function aplicarUrl() {
   estadoTemporal.value = ESTADOS_URL.includes(estado as EstadoTemporal) ? estado as EstadoTemporal : null;
 
   busqueda.value = texto(query.q) ?? "";
+  terminoBusqueda.value = busqueda.value;
 
   const tab = texto(query.tab);
   pestana.value = tab === "proximos" || tab === "sin" ? tab : "calendario";
@@ -401,7 +404,7 @@ function aplicarUrl() {
 aplicarUrl();
 
 watch(
-    [busqueda, fuente, filtros, estadoTemporal, pestana],
+    [terminoBusqueda, fuente, filtros, estadoTemporal, pestana],
     () => {
       const query: Record<string, string> = {};
 
@@ -412,7 +415,7 @@ watch(
 
       if (fuente.value) query.fuente = fuente.value;
       if (estadoTemporal.value) query.estadoTemporal = estadoTemporal.value;
-      if (busqueda.value.trim()) query.q = busqueda.value.trim();
+      if (terminoBusqueda.value.trim()) query.q = terminoBusqueda.value.trim();
       if (pestana.value !== "calendario") query.tab = pestana.value;
 
       router.replace({ query });
