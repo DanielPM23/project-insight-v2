@@ -370,10 +370,6 @@ function estadoTemporal(
 /*
  * Un resumen por requerimiento, con las fechas
  * normalizadas una sola vez.
- *
- * Las copias por casos del Listado comparten la fila de
- * DT: se omiten para no repetir sus eventos (igual que en
- * Alertas).
  */
 export function construirPlanificacion(
     requerimientos: Requerimiento[],
@@ -383,10 +379,6 @@ export function construirPlanificacion(
     const resultado: PlanificacionRequerimiento[] = [];
 
     for (const requerimiento of requerimientos) {
-        if (requerimiento.copiaDe) {
-            continue;
-        }
-
         const dt =
             requerimiento.demandaTactica;
 
