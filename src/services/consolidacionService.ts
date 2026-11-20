@@ -28,9 +28,9 @@ import type {
  *
  * 3. Cada caso del Listado se une así a los requerimientos
  *    de DT. Si no encaja con ninguno, es un requerimiento
- *    propio. Cada caso se ve en su propia fila: si el
- *    requerimiento ya tiene un caso, el siguiente va en una
- *    copia con los mismos datos de DT.
+ *    propio. Un requerimiento de DT es una sola fila aunque
+ *    tenga varios casos (la columna Caso los lista todos),
+ *    para que el total coincida con las filas del Excel.
  *
  * 4. Cada registro de ClearQuest se une igual a DT o al
  *    Listado (2024-M0243-A001 → 2024-M0243; los proyectos
@@ -125,13 +125,6 @@ export interface Requerimiento {
     compartenMantenimiento: number;
 
     /*
-     * Id del requerimiento de DT del que esta fila es copia
-     * porque comparte trámite o mantenimiento con otro caso
-     * del Listado. Vacío en el resto.
-     */
-    copiaDe: string;
-
-    /*
      * Cómo se unieron las fuentes: por mantenimiento si
      * todas se cruzaron por mantenimiento, por trámite si
      * alguna necesitó el trámite, sin match si solo hay una
@@ -148,6 +141,18 @@ export interface Requerimiento {
     cobertura: string;
 
     alertas: string[];
+}
+
+
+/*
+ * Antes cada caso adicional del Listado era una copia con id
+ * "DT:123|LS:456". Los enlaces guardados con ese id abren el
+ * requerimiento de DT.
+ */
+export function idSinCaso(
+    id: string
+): string {
+    return id.split("|LS:")[0];
 }
 
 
@@ -243,7 +248,6 @@ function crearRequerimiento(
         listado: [],
         clearQuest: [],
         compartenMantenimiento: 0,
-        copiaDe: "",
         tipoMatch: "Sin Match",
         cobertura: "",
         detalleMatch: "",
@@ -610,48 +614,21 @@ export function consolidarRequerimientos(
 
 
         /*
-         * Los casos que comparten trámite o mantenimiento con un
-         * caso anterior van en su propia fila. Se indexan al
-         * terminar el Listado para que los casos siguientes no
-         * se crucen con ellas.
+         * Un requerimiento de DT es siempre una sola fila, como en
+         * el Excel: si ya tiene un caso del Listado, el siguiente
+         * caso se suma a la misma fila. Un caso que solo coincide
+         * con otro caso sin DT va en su propio requerimiento.
          */
-        const conCaso =
-            destinos.filter(
-                destino =>
-                    destino.listado.length > 0
-            );
-
         const libres =
             destinos.filter(
                 destino =>
+                    destino.demandaTactica !== null ||
                     destino.listado.length === 0
             );
 
         const nuevos: Requerimiento[] = [];
 
-        for (const base of conCaso) {
-            if (!base.demandaTactica) {
-                continue;
-            }
-
-            const copia =
-                crearRequerimiento(
-                    `${base.id}|LS:${registro.clave}`
-                );
-
-            copia.copiaDe =
-                base.id;
-
-            copia.demandaTactica =
-                base.demandaTactica;
-
-            nuevos.push(copia);
-        }
-
-        if (
-            destinos.length === 0 ||
-            (libres.length === 0 && nuevos.length === 0)
-        ) {
+        if (libres.length === 0) {
             nuevos.push(
                 crearRequerimiento(
                     `LS:${registro.clave}`

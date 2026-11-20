@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
+import { idSinCaso } from "../services/consolidacionService";
 
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
@@ -424,8 +425,9 @@ watch(
 );
 
 /*
- * ?id= se atiende una vez, cuando ya hay datos. Una copia
- * por caso del Listado se abre como su requerimiento de DT.
+ * ?id= se atiende una vez, cuando ya hay datos. Un enlace
+ * antiguo a una copia por caso del Listado abre su
+ * requerimiento de DT.
  */
 let idPendiente = texto(route.query.id);
 
@@ -434,7 +436,7 @@ function abrirPendiente() {
     return;
   }
 
-  const id = porId.value.get(idPendiente)?.copiaDe || idPendiente;
+  const id = porId.value.has(idPendiente) ? idPendiente : idSinCaso(idPendiente);
   const item = items.value.find(candidato => candidato.id === id);
 
   idPendiente = null;

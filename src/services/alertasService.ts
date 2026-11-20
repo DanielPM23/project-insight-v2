@@ -326,14 +326,6 @@ export function calcularAlertas(
     const alertas: AlertaDesarrollo[] = [];
 
     for (const requerimiento of requerimientos) {
-        /*
-         * Las copias por casos del Listado comparten la fila de
-         * DT: su alerta es la del requerimiento original.
-         */
-        if (requerimiento.copiaDe) {
-            continue;
-        }
-
         const dt =
             requerimiento.demandaTactica;
 

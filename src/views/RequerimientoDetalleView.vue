@@ -49,6 +49,7 @@ import {
 import {
   formatearFecha
 } from "../utils/fechas";
+import { idSinCaso } from "../services/consolidacionService";
 
 
 const props =
@@ -79,7 +80,9 @@ onMounted(() => {
 
 const requerimiento =
     computed(() =>
-        porId.value.get(props.id) ?? null
+        porId.value.get(props.id) ??
+        porId.value.get(idSinCaso(props.id)) ??
+        null
     );
 
 
